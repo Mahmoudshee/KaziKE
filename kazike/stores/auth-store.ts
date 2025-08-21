@@ -35,12 +35,14 @@ interface AuthState {
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
-  signUp: (userData: Partial<User>) => Promise<User>;
-  signIn: (email: string, password: string) => Promise<User>;
+  signUp: (userData: Partial<User> & { password: string }) => Promise<User>;
+  signIn: (identifier: string, password: string) => Promise<User>;
   generateDomain: (name: string, role: UserRole) => string;
 }
 
 const STORAGE_KEY = "@ke_identity_user";
+const USERS_MAP_KEY = "@ke_identity_users"; // Record<userId, User>
+const CREDENTIALS_KEY = "@ke_identity_credentials"; // { byEmail: Record<string,{id:string,password:string}>, byPhone: Record<string,{id:string,password:string}> }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -86,6 +88,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: null, selectedRole: null });
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
+      // On web, force a hard navigation to landing to reset router state
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     } catch (error) {
       console.error("Failed to clear user from storage:", error);
     }
@@ -123,7 +129,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return `${rolePrefix}${cleanName}${timestamp}.ke`;
   },
 
-  signUp: async (userData: Partial<User>) => {
+  signUp: async (userData: Partial<User> & { password: string }) => {
     set({ isLoading: true });
     
     try {
@@ -137,12 +143,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         id: `user_${Date.now()}`,
         email: userData.email!,
         role: userData.role!,
-        isVerified: false,
+        isVerified: true,
         profile: userData.profile || {},
         domain,
         createdAt: new Date().toISOString(),
       };
       
+      // Persist into users map and credentials index
+      const rawUsers = (await AsyncStorage.getItem(USERS_MAP_KEY)) || "{}";
+      const usersMap: Record<string, User> = JSON.parse(rawUsers);
+      usersMap[newUser.id] = newUser;
+
+      const rawCreds = (await AsyncStorage.getItem(CREDENTIALS_KEY)) || "{}";
+      const creds: { byEmail?: Record<string,{id:string,password:string}>, byPhone?: Record<string,{id:string,password:string}> } = JSON.parse(rawCreds);
+      if (!creds.byEmail) creds.byEmail = {};
+      if (!creds.byPhone) creds.byPhone = {};
+
+      const emailKey = (newUser.email || "").toLowerCase();
+      const phoneKey = (newUser.profile.phone || "").replace(/\D/g, "");
+
+      if (emailKey) {
+        if (creds.byEmail[emailKey]) {
+          throw new Error("Email already registered");
+        }
+        creds.byEmail[emailKey] = { id: newUser.id, password: userData.password };
+      }
+      if (phoneKey) {
+        if (creds.byPhone[phoneKey]) {
+          throw new Error("Phone already registered");
+        }
+        creds.byPhone[phoneKey] = { id: newUser.id, password: userData.password };
+      }
+
+      await AsyncStorage.multiSet([
+        [USERS_MAP_KEY, JSON.stringify(usersMap)],
+        [CREDENTIALS_KEY, JSON.stringify(creds)],
+      ]);
+
       console.log("Created new user:", newUser.email, newUser.domain);
       await get().setUser(newUser);
       
@@ -155,61 +192,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signIn: async (email: string, password: string) => {
+  signIn: async (identifier: string, password: string) => {
     set({ isLoading: true });
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock authentication - in real app, this would validate against backend
-      const mockUsers: Record<string, User> = {
-        "youth@test.com": {
-          id: "user_youth",
-          email: "youth@test.com",
-          role: "youth",
-          isVerified: true,
-          profile: { fullName: "John Doe", phone: "+254712345678" },
-          domain: "johndoe1234.ke",
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-        "employer@test.com": {
-          id: "user_employer",
-          email: "employer@test.com",
-          role: "employer",
-          isVerified: true,
-          profile: { orgName: "Tech Solutions Ltd", kraPin: "A123456789B" },
-          domain: "emptechsolutions5678.ke",
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-        "gov@test.com": {
-          id: "user_government",
-          email: "gov@test.com",
-          role: "government",
-          isVerified: true,
-          profile: { fullName: "Jane Smith", ministry: "Ministry of Education" },
-          domain: "govjanesmith9012.ke",
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-        "uni@test.com": {
-          id: "user_institution",
-          email: "uni@test.com",
-          role: "institution",
-          isVerified: true,
-          profile: { institutionName: "University of Nairobi" },
-          domain: "insuniversityofnairobi3456.ke",
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-      };
-      
-      const user = mockUsers[email.toLowerCase()];
-      if (!user) {
-        throw new Error("Invalid email or password");
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const rawCreds = (await AsyncStorage.getItem(CREDENTIALS_KEY)) || "{}";
+      const creds: { byEmail?: Record<string,{id:string,password:string}>, byPhone?: Record<string,{id:string,password:string}> } = JSON.parse(rawCreds);
+      const byEmail = creds.byEmail || {};
+      const byPhone = creds.byPhone || {};
+      const identifierLower = identifier.toLowerCase();
+      const asPhone = identifier.replace(/\D/g, "");
+
+      let credential = byEmail[identifierLower];
+      if (!credential && asPhone) {
+        credential = byPhone[asPhone];
       }
-      
-      console.log("User signed in:", user.email, user.role);
+      if (!credential) {
+        throw new Error("Account not found");
+      }
+      if (credential.password !== password) {
+        throw new Error("Invalid credentials");
+      }
+
+      const rawUsers = (await AsyncStorage.getItem(USERS_MAP_KEY)) || "{}";
+      const usersMap: Record<string, User> = JSON.parse(rawUsers);
+      const user = usersMap[credential.id];
+      if (!user) {
+        throw new Error("User data missing");
+      }
+
       await get().setUser(user);
-      
       return user;
     } catch (error) {
       console.error("Sign in failed:", error);

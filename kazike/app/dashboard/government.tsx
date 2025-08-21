@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -18,8 +18,15 @@ import {
   AlertTriangle,
   TrendingUp,
 } from "lucide-react-native";
+import { useAuthStore } from "@/stores/auth-store";
 
 export default function GovernmentDashboard() {
+  const { user, logout } = useAuthStore();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const handleSignOut = async () => {
+    await logout();
+  };
+  const toggleMenu = () => setIsMenuOpen((v) => !v);
   const quickStats = [
     { label: "Total Users", value: "12.5K", icon: Users, color: "#00C65A" },
     { label: "Verified IDs", value: "8.2K", icon: CheckCircle, color: "#4A90E2" },
@@ -46,12 +53,23 @@ export default function GovernmentDashboard() {
             <View style={styles.header}>
               <View>
                 <Text style={styles.greeting}>Government Portal</Text>
-                <Text style={styles.departmentName}>Ministry of ICT</Text>
+                <Text style={styles.departmentName}>{user?.profile?.ministry || "Ministry"}</Text>
               </View>
-              <TouchableOpacity style={styles.profileButton}>
+              <TouchableOpacity style={styles.profileButton} onPress={toggleMenu}>
                 <Shield color="#FFFFFF" size={24} />
               </TouchableOpacity>
             </View>
+
+            {isMenuOpen && (
+              <View style={styles.profileMenu}>
+                <TouchableOpacity style={styles.profileMenuItem}>
+                  <Text style={styles.profileMenuText}>Settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.profileMenuItem} onPress={handleSignOut}>
+                  <Text style={styles.profileMenuText}>Sign Out</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Quick Stats */}
             <View style={styles.statsContainer}>
@@ -155,6 +173,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 20,
+  },
+  profileMenu: {
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderRadius: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  profileMenuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  profileMenuText: {
+    color: "#FFFFFF",
+    fontSize: 14,
   },
   greeting: {
     fontSize: 16,

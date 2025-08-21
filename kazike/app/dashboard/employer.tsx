@@ -31,24 +31,13 @@ type TabType = 'home' | 'jobs' | 'candidates' | 'analytics' | 'settings';
 export default function EmployerDashboard() {
   const { user, logout } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  const handleSignOut = () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-            router.replace("/");
-          },
-        },
-      ]
-    );
+  const handleSignOut = async () => {
+    await logout();
+    router.replace("/");
   };
+  const toggleMenu = () => setIsMenuOpen((v) => !v);
   const quickStats = [
     { label: "Active Jobs", value: "5", icon: Briefcase, color: "#00C65A" },
     { label: "Applications", value: "127", icon: Users, color: "#4A90E2" },
@@ -344,12 +333,23 @@ export default function EmployerDashboard() {
             <View style={styles.header}>
               <View>
                 <Text style={styles.greeting}>Welcome back,</Text>
-                <Text style={styles.companyName}>TechCorp Kenya</Text>
+                <Text style={styles.companyName}>{user?.profile?.orgName || "Organization"}</Text>
               </View>
-              <TouchableOpacity style={styles.profileButton}>
+              <TouchableOpacity style={styles.profileButton} onPress={toggleMenu}>
                 <Building2 color="#FFFFFF" size={24} />
               </TouchableOpacity>
             </View>
+
+            {isMenuOpen && (
+              <View style={styles.profileMenu}>
+                <TouchableOpacity style={styles.profileMenuItem} onPress={() => setActiveTab('settings')}>
+                  <Text style={styles.profileMenuText}>Company Settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.profileMenuItem} onPress={handleSignOut}>
+                  <Text style={styles.profileMenuText}>Sign Out</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Quick Stats */}
             <View style={styles.statsContainer}>
@@ -443,6 +443,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 20,
+  },
+  profileMenu: {
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderRadius: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  profileMenuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  profileMenuText: {
+    color: "#FFFFFF",
+    fontSize: 14,
   },
   greeting: {
     fontSize: 16,
