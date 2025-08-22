@@ -14,7 +14,7 @@ export default function ApprovalPendingScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#8B1538", "#A91B47", "#C41E3A"]}
+        colors={["#000000", "#CE1126", "#006600"]}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea}>
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "rgba(255, 149, 0, 0.2)",
+    backgroundColor: "rgba(206, 17, 38, 0.2)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -160,12 +160,11 @@ const styles = StyleSheet.create({
     color: "rgba(255, 255, 255, 0.8)",
   },
   backButton: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#CE1126",
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    marginTop: 20,
   },
   backButtonText: {
     color: "#FFFFFF",

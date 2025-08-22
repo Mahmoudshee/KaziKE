@@ -68,7 +68,7 @@ export default function LandingScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#8B1538", "#A91B47", "#C41E3A"]}
+        colors={["#000000", "#CE1126", "#006600"]}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea}>
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   primaryButton: {
-    backgroundColor: "#00C65A",
+    backgroundColor: "#CE1126",
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
@@ -321,5 +321,12 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: "rgba(255, 255, 255, 0.6)",
+  },
+  getStartedButton: {
+    backgroundColor: "#CE1126",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 20,
   },
 });
