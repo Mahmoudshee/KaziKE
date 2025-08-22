@@ -44,7 +44,7 @@ export default function GovernmentSignupScreen() {
         password,
         profile: { fullName: officialEmail, ministry, phone: "", },
       });
-      router.push("/approval-pending");
+      router.push("/verify-government");
     } catch (error) {
       Alert.alert(
         "Signup Failed",
@@ -56,7 +56,7 @@ export default function GovernmentSignupScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#8B1538", "#A91B47", "#C41E3A"]}
+        colors={["#000000", "#CE1126", "#006600"]}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea}>
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   signupButton: {
-    backgroundColor: "#00C65A",
+    backgroundColor: "#CE1126",
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",

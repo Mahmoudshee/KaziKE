@@ -24,28 +24,28 @@ const profileOptions = [
     title: "Youth",
     tagline: "Get your .KE EduID and job matches",
     icon: Users,
-    color: "#00C65A",
+    color: "#CE1126",
   },
   {
     role: "employer" as UserRole,
     title: "SME/Employer",
     tagline: "Post jobs and discover verified talent",
     icon: Building2,
-    color: "#FF6B35",
+    color: "#006600",
   },
   {
     role: "government" as UserRole,
     title: "Government",
     tagline: "Analytics and verification oversight",
     icon: Shield,
-    color: "#4A90E2",
+    color: "#000000",
   },
   {
     role: "institution" as UserRole,
     title: "University/TVET",
     tagline: "Issue and verify certificates",
     icon: GraduationCap,
-    color: "#9B59B6",
+    color: "#CE1126",
   },
 ];
 
@@ -60,7 +60,7 @@ export default function ProfileSelectionScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#8B1538", "#A91B47", "#C41E3A"]}
+        colors={["#000000", "#CE1126", "#006600"]}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea}>
