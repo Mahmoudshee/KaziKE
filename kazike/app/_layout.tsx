@@ -40,6 +40,7 @@ function RootLayoutNav() {
       <Stack.Screen name="kyc" />
       <Stack.Screen name="verify-company" />
       <Stack.Screen name="approval-pending" />
+      <Stack.Screen name="dashboard" />
       <Stack.Screen name="dashboard/youth" />
       <Stack.Screen name="dashboard/employer" />
       <Stack.Screen name="dashboard/government" />
