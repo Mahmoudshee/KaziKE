@@ -177,6 +177,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return tempUser;
       }
 
+      // Institution => Supabase flow
+      if (userData.role === "institution") {
+        const institutionName = userData.profile?.institutionName || "institution";
+        const phone = userData.profile?.phone || "";
+        const institutionType = userData.profile?.institutionType || "";
+        const accreditationNumber = userData.profile?.accreditationNumber || "";
+        const website = userData.profile?.website || "";
+        const address = userData.profile?.address || "";
+        const principalName = userData.profile?.principalName || "";
+        const domain = get().generateDomain(institutionName, "institution");
+
+        const { data, error } = await supabase.auth.signUp({
+          email: userData.email!,
+          password: userData.password,
+          options: {
+            data: { 
+              institutionName, 
+              phone, 
+              institutionType, 
+              accreditationNumber, 
+              website, 
+              address, 
+              principalName, 
+              domain, 
+              role: "institution" 
+            },
+            emailRedirectTo: process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL,
+          },
+        });
+
+        if (error) throw error;
+
+        const tempUser: User = {
+          id: data.user?.id || `pending_${Date.now()}`,
+          email: userData.email!,
+          role: "institution",
+          isVerified: false,
+          profile: { 
+            institutionName, 
+            phone, 
+            institutionType, 
+            accreditationNumber, 
+            website, 
+            address, 
+            principalName 
+          },
+          domain,
+          createdAt: new Date().toISOString(),
+        };
+
+        return tempUser;
+      }
+
       // Other roles => AsyncStorage mock flow
       const name = userData.profile?.fullName || userData.profile?.orgName || userData.profile?.institutionName || "user";
       const providedDomain = (userData as any).domain as string | undefined;
@@ -238,7 +291,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signIn: async (identifier: string, password: string) => {
     set({ isLoading: true, error: null });
     try {
-      // Try Supabase first for youth emails
+      // Try Supabase first for youth and institution emails
       if (identifier.includes("@")) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: identifier,
@@ -248,23 +301,46 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (data?.user) {
           const meta = (data.user as any).user_metadata || {};
           const role: UserRole = meta.role || "youth";
-          const domain = meta.domain || get().generateDomain(meta.fullName || "user", role);
+          const domain = meta.domain || get().generateDomain(meta.fullName || meta.institutionName || "user", role);
           const isVerified = Boolean((data.user as any).email_confirmed_at);
 
-          const signedInUser: User = {
-            id: data.user.id,
-            email: data.user.email || identifier,
-            role,
-            isVerified,
-            profile: {
-              fullName: meta.fullName,
-              phone: meta.phone,
-              nationalId: meta.nationalId,
-              dateOfBirth: meta.dateOfBirth,
-            },
-            domain,
-            createdAt: (data.user as any).created_at || new Date().toISOString(),
-          };
+          let signedInUser: User;
+
+          if (role === "institution") {
+            signedInUser = {
+              id: data.user.id,
+              email: data.user.email || identifier,
+              role,
+              isVerified,
+              profile: {
+                institutionName: meta.institutionName,
+                phone: meta.phone,
+                institutionType: meta.institutionType,
+                accreditationNumber: meta.accreditationNumber,
+                website: meta.website,
+                address: meta.address,
+                principalName: meta.principalName,
+              },
+              domain,
+              createdAt: (data.user as any).created_at || new Date().toISOString(),
+            };
+          } else {
+            signedInUser = {
+              id: data.user.id,
+              email: data.user.email || identifier,
+              role,
+              isVerified,
+              profile: {
+                fullName: meta.fullName,
+                phone: meta.phone,
+                nationalId: meta.nationalId,
+                dateOfBirth: meta.dateOfBirth,
+              },
+              domain,
+              createdAt: (data.user as any).created_at || new Date().toISOString(),
+            };
+          }
+
           await get().setUser(signedInUser);
           return signedInUser;
         }
