@@ -27,11 +27,16 @@ export default function LoginScreen() {
     }
 
     try {
+      console.log("Attempting login with:", email);
       const user = await signIn(email, password);
+      console.log("Login successful, user role:", user.role);
       
       // Navigate to appropriate dashboard based on role
-      router.replace(`/dashboard/${user.role}`);
+      const dashboardPath = `/dashboard/${user.role}`;
+      console.log("Navigating to:", dashboardPath);
+      router.replace(dashboardPath);
     } catch (error) {
+      console.error("Login error:", error);
       Alert.alert(
         "Login Failed", 
         error instanceof Error ? error.message : "Please check your credentials and try again."

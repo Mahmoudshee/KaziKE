@@ -23,7 +23,10 @@ function RootLayoutNav() {
       // Auto-navigate authenticated users to their dashboard
       if (user && user.isVerified) {
         console.log("Auto-navigating to dashboard:", user.role);
+        console.log("User object:", user);
         router.replace(`/dashboard/${user.role}`);
+      } else {
+        console.log("No user or user not verified:", { user, isVerified: user?.isVerified });
       }
     }
   }, [user, isInitialized, isLoading]);
@@ -38,7 +41,7 @@ function RootLayoutNav() {
       <Stack.Screen name="signup/government" />
       <Stack.Screen name="signup/institution" />
       <Stack.Screen name="kyc" />
-      <Stack.Screen name="verify-company" />
+      <Stack.Screen name="verify-commpany" />
       <Stack.Screen name="approval-pending" />
       <Stack.Screen name="dashboard/youth" />
       <Stack.Screen name="dashboard/employer" />

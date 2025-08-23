@@ -13,6 +13,12 @@ export interface UserProfile {
   ministry?: string;
   institutionName?: string;
   domain?: string;
+  // Institution-specific optional fields
+  institutionType?: string;
+  accreditationNumber?: string;
+  website?: string;
+  address?: string;
+  principalName?: string;
 }
 
 export interface User {
@@ -137,14 +143,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const name = userData.profile?.fullName || userData.profile?.orgName || userData.profile?.institutionName || "user";
-      const domain = get().generateDomain(name, userData.role!);
+      const providedDomain = (userData as any).domain as string | undefined;
+      const domain = providedDomain && providedDomain.trim() !== "" 
+        ? providedDomain.trim().toLowerCase()
+        : get().generateDomain(name, userData.role!);
       
       const newUser: User = {
         id: `user_${Date.now()}`,
         email: userData.email!,
         role: userData.role!,
         isVerified: true,
-        profile: userData.profile || {},
+        profile: { ...(userData.profile || {}), domain },
         domain,
         createdAt: new Date().toISOString(),
       };
