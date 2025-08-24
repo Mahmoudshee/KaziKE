@@ -14,7 +14,7 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, GraduationCap, Building, Mail, Phone, Lock, MapPin, User, Globe, FileText } from "lucide-react-native";
+import { ArrowLeft, GraduationCap, Building, Mail, Phone, Lock, MapPin, User, FileText } from "lucide-react-native";
 import { useAuthStore } from "@/stores/auth-store";
 import { Picker } from "@react-native-picker/picker";
 
@@ -32,8 +32,6 @@ export default function InstitutionSignupScreen() {
     confirmPassword: "",
     institutionType: "",
     accreditationNumber: "",
-    website: "",
-    domain: "",
     address: "",
     principalName: "",
   });
@@ -44,30 +42,23 @@ export default function InstitutionSignupScreen() {
 
   const validateStep1 = () => {
     const { institutionName, email, phone, password, confirmPassword } = formData;
-    console.log("Validating step 1 with data:", { institutionName, email, phone, password: password ? "***" : "", confirmPassword: confirmPassword ? "***" : "" });
-    
     if (!institutionName || !email || !phone || !password || !confirmPassword) {
-      console.log("Missing required fields");
       Alert.alert("Validation Error", "Please fill in all required fields");
       return false;
     }
     if (password !== confirmPassword) {
-      console.log("Passwords don't match");
       Alert.alert("Validation Error", "Passwords do not match");
       return false;
     }
     if (password.length < 6) {
-      console.log("Password too short");
       Alert.alert("Validation Error", "Password must be at least 6 characters long");
       return false;
     }
-    console.log("Step 1 validation passed");
     return true;
   };
 
   const validateStep2 = () => {
     const { institutionType, accreditationNumber, address, principalName } = formData;
-    
     if (!institutionType) {
       Alert.alert("Validation Error", "Please select an institution type");
       return false;
@@ -88,20 +79,13 @@ export default function InstitutionSignupScreen() {
   };
 
   const handleNextStep = () => {
-    console.log("handleNextStep called, current step:", step);
-    console.log("validateStep1 result:", validateStep1());
     if (step === 1 && validateStep1()) {
-      console.log("Moving to step 2");
       setStep(2);
-    } else {
-      console.log("Validation failed or wrong step");
     }
   };
 
   const handleSignup = async () => {
-    if (!validateStep2()) {
-      return;
-    }
+    if (!validateStep2()) return;
 
     const {
       institutionName,
@@ -110,14 +94,11 @@ export default function InstitutionSignupScreen() {
       password,
       institutionType,
       accreditationNumber,
-      website,
       address,
       principalName,
-      domain,
     } = formData;
 
     try {
-      console.log("Starting institution registration...");
       const user = await signUp({
         email,
         role: "institution",
@@ -127,72 +108,27 @@ export default function InstitutionSignupScreen() {
           phone,
           institutionType,
           accreditationNumber,
-          website,
           address,
           principalName,
         },
-        domain,
       });
-
-      console.log("Registration successful, user:", user);
-      
-      // Set role and navigate to verification
       setSelectedRole("institution");
       router.push("/verify-institution");
     } catch (error) {
-      console.error("Registration error:", error);
       const message = error instanceof Error ? error.message : "Please try again later.";
-      
-      if (message.includes("already registered")) {
-        if (message.includes("Email already registered")) {
-          Alert.alert("Email Already Taken",
-            "This email address is already registered. Please use a different email or try logging in with your existing account.",
-            [
-              { text: "OK", style: "default" },
-              { text: "Go to Login", onPress: () => router.push("/login") }
-            ]
-          );
-        } else if (message.includes("Phone already registered")) {
-          Alert.alert("Phone Number Already Taken",
-            "This phone number is already registered. Please use a different phone number or try logging in with your existing account.",
-            [
-              { text: "OK", style: "default" },
-              { text: "Go to Login", onPress: () => router.push("/login") }
-            ]
-          );
-        } else {
-          Alert.alert("Credentials Already Taken",
-            "Some of your credentials are already registered. Please check your email and phone number, or try logging in with your existing account.",
-            [
-              { text: "OK", style: "default" },
-              { text: "Go to Login", onPress: () => router.push("/login") }
-            ]
-          );
-        }
-        return;
-      }
       Alert.alert("Registration Failed", message);
     }
   };
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={["#000000", "#CE1126", "#006600"]}
-        style={styles.gradient}
-      >
+      <LinearGradient colors={["#000000", "#CE1126", "#006600"]} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
-          <KeyboardAvoidingView
-            style={styles.keyboardView}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-          >
-            {/* Header */}
+          <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === "ios" ? "padding" : "height"}>
             <View style={styles.header}>
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => (step === 1 ? router.back() : setStep(step - 1))}
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
               >
                 <ArrowLeft color="#FFFFFF" size={24} />
               </TouchableOpacity>
@@ -200,14 +136,10 @@ export default function InstitutionSignupScreen() {
               <View style={{ width: 40 }} />
             </View>
 
-            {/* Step indicator */}
             <View style={styles.progressContainer}>
               <View style={[styles.progressStep, step >= 1 && styles.progressActive]} />
               <View style={[styles.progressStep, step >= 2 && styles.progressActive]} />
             </View>
-
-            {/* Debug info */}
-            <Text style={styles.debugText}>Current Step: {step}</Text>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
               {step === 1 && (
@@ -217,64 +149,79 @@ export default function InstitutionSignupScreen() {
                     <Text style={styles.stepTitle}>Step 1: Account Information</Text>
                   </View>
 
-                  <View style={styles.inputContainer}>
-                    <Building color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Institution Name *"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      value={formData.institutionName}
-                      onChangeText={(v) => handleInputChange("institutionName", v)}
-                    />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Institution Name</Text>
+                    <View style={styles.inputContainer}>
+                      <Building color="rgba(255, 255, 255, 0.7)" size={20} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter institution name"
+                        placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                        value={formData.institutionName}
+                        onChangeText={(v) => handleInputChange("institutionName", v)}
+                      />
+                    </View>
                   </View>
 
-                  <View style={styles.inputContainer}>
-                    <Mail color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Official Email *"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      value={formData.email}
-                      onChangeText={(v) => handleInputChange("email", v)}
-                    />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Official Email</Text>
+                    <View style={styles.inputContainer}>
+                      <Mail color="rgba(255, 255, 255, 0.7)" size={20} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter official email"
+                        placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        value={formData.email}
+                        onChangeText={(v) => handleInputChange("email", v)}
+                      />
+                    </View>
                   </View>
 
-                  <View style={styles.inputContainer}>
-                    <Phone color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Phone Number *"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      keyboardType="phone-pad"
-                      value={formData.phone}
-                      onChangeText={(v) => handleInputChange("phone", v)}
-                    />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Phone Number</Text>
+                    <View style={styles.inputContainer}>
+                      <Phone color="rgba(255, 255, 255, 0.7)" size={20} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter phone number"
+                        placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                        keyboardType="phone-pad"
+                        value={formData.phone}
+                        onChangeText={(v) => handleInputChange("phone", v)}
+                      />
+                    </View>
                   </View>
 
-                  <View style={styles.inputContainer}>
-                    <Lock color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Password *"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      secureTextEntry
-                      value={formData.password}
-                      onChangeText={(v) => handleInputChange("password", v)}
-                    />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Password</Text>
+                    <View style={styles.inputContainer}>
+                      <Lock color="rgba(255, 255, 255, 0.7)" size={20} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter password"
+                        placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                        secureTextEntry
+                        value={formData.password}
+                        onChangeText={(v) => handleInputChange("password", v)}
+                      />
+                    </View>
                   </View>
 
-                  <View style={styles.inputContainer}>
-                    <Lock color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Confirm Password *"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      secureTextEntry
-                      value={formData.confirmPassword}
-                      onChangeText={(v) => handleInputChange("confirmPassword", v)}
-                    />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Confirm Password</Text>
+                    <View style={styles.inputContainer}>
+                      <Lock color="rgba(255, 255, 255, 0.7)" size={20} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Confirm password"
+                        placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                        secureTextEntry
+                        value={formData.confirmPassword}
+                        onChangeText={(v) => handleInputChange("confirmPassword", v)}
+                      />
+                    </View>
                   </View>
 
                   <TouchableOpacity style={styles.primaryButton} onPress={handleNextStep}>
@@ -290,76 +237,66 @@ export default function InstitutionSignupScreen() {
                     <Text style={styles.stepTitle}>Step 2: Institutional Details</Text>
                   </View>
 
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={formData.institutionType}
-                      onValueChange={(v: string) => handleInputChange("institutionType", v)}
-                      style={styles.picker}
-                      dropdownIconColor="#FFFFFF"
-                      itemStyle={{ color: "#FFFFFF" }}
-                    >
-                      <Picker.Item label="Select Institution Type *" value="" color="#FFFFFF" />
-                      <Picker.Item label="University" value="University" color="#FFFFFF" />
-                      <Picker.Item label="College" value="College" color="#FFFFFF" />
-                      <Picker.Item label="High School" value="High School" color="#FFFFFF" />
-                      <Picker.Item label="Vocational" value="Vocational" color="#FFFFFF" />
-                      <Picker.Item label="Training Center" value="Training Center" color="#FFFFFF" />
-                    </Picker>
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Institution Type</Text>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={formData.institutionType}
+                        onValueChange={(v: string) => handleInputChange("institutionType", v)}
+                        style={styles.picker}
+                        dropdownIconColor="#FFFFFF"
+                        itemStyle={{ color: "#FFFFFF" }}
+                      >
+                        <Picker.Item label="Select Institution Type" value="" color="#WHITE" />
+                        <Picker.Item label="University" value="University" color="#WHITE" />
+                        <Picker.Item label="College" value="College" color="#WHITE" />
+                        <Picker.Item label="High School" value="High School" color="#WHITE" />
+                        <Picker.Item label="Vocational" value="Vocational" color="#WHITE" />
+                        <Picker.Item label="Training Center" value="Training Center" color="#WHITE" />
+                      </Picker>
+                    </View>
                   </View>
 
-                  <View style={styles.inputContainer}>
-                    <FileText color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Accreditation Number *"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      value={formData.accreditationNumber}
-                      onChangeText={(v) => handleInputChange("accreditationNumber", v)}
-                    />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Institution Registration Number</Text>
+                    <View style={styles.inputContainer}>
+                      <FileText color="rgba(255, 255, 255, 0.7)" size={20} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter registration number"
+                        placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                        value={formData.accreditationNumber}
+                        onChangeText={(v) => handleInputChange("accreditationNumber", v)}
+                      />
+                    </View>
                   </View>
 
-                  <View style={styles.inputContainer}>
-                    <Globe color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Website (optional)"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      value={formData.website}
-                      onChangeText={(v) => handleInputChange("website", v)}
-                    />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Physical Address</Text>
+                    <View style={styles.inputContainer}>
+                      <MapPin color="rgba(255, 255, 255, 0.7)" size={20} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter physical address"
+                        placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                        value={formData.address}
+                        onChangeText={(v) => handleInputChange("address", v)}
+                      />
+                    </View>
                   </View>
 
-                  <View style={styles.inputContainer}>
-                    <Globe color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Get .Ke domain name (optional)"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      value={formData.domain}
-                      onChangeText={(v) => handleInputChange("domain", v)}
-                    />
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <MapPin color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Physical Address *"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      value={formData.address}
-                      onChangeText={(v) => handleInputChange("address", v)}
-                    />
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <User color="rgba(255, 255, 255, 0.7)" size={20} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Principal / Admin Name *"
-                      placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      value={formData.principalName}
-                      onChangeText={(v) => handleInputChange("principalName", v)}
-                    />
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={{ color: '#fff', marginBottom: 6 }}><Text style={{ color: '#FF4D4F' }}>*</Text> Principal / Admin Name</Text>
+                    <View style={styles.inputContainer}>
+                      <User color="rgba(255, 255, 255, 0.7)" size={20} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Enter principal or admin name"
+                        placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                        value={formData.principalName}
+                        onChangeText={(v) => handleInputChange("principalName", v)}
+                      />
+                    </View>
                   </View>
 
                   <TouchableOpacity
@@ -367,7 +304,8 @@ export default function InstitutionSignupScreen() {
                     onPress={handleSignup}
                     disabled={isLoading}
                   >
-                    <Text style={[styles.primaryButtonText, { color: "#FFFFFF" }]}>
+                    <Text style={[styles.primaryButtonText, { color: "#FFFFFF" }]}
+                    >
                       {isLoading ? "Registering..." : "Register Institution"}
                     </Text>
                   </TouchableOpacity>

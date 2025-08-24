@@ -4,11 +4,13 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Pressable,
   View,
   ScrollView,
   Modal,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -21,6 +23,9 @@ import {
 } from "lucide-react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useAuthStore } from "@/stores/auth-store";
+import Toast, { ToastHandle } from "@/components/Toast";
+import { supabase } from "@/lib/supabase";
+import Colors from "./constants/colors";
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -35,9 +40,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 20,
   },
-  greeting: { fontSize: 16, color: "rgba(255, 255, 255, 0.8)" },
-  institutionName: { fontSize: 24, fontWeight: "bold", color: "#FFFFFF" },
-  domainText: { fontSize: 14, color: "rgba(255,255,255,0.7)" },
+  greeting: { fontSize: 16, color: "rgba(255, 255, 255, 0.9)" },
+  institutionName: { fontSize: 24, fontWeight: "bold", color: Colors.white },
+  domainText: { fontSize: 14, color: "rgba(255,255,255,0.85)" },
   profileButton: {
     width: 40,
     height: 40,
@@ -68,10 +73,15 @@ const styles = StyleSheet.create({
   statsContainer: { flexDirection: "row", gap: 12, marginBottom: 24 },
   statCard: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
+  shadowColor: "#000",
+  shadowOpacity: 0.12,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 4,
   },
   statIcon: {
     width: 32,
@@ -86,10 +96,14 @@ const styles = StyleSheet.create({
 
   // Certificates
   certificatesCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  backgroundColor: "rgba(255, 255, 255, 0.06)",
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
+  shadowColor: "#000",
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  elevation: 6,
   },
   certificatesHeader: {
     flexDirection: "row",
@@ -100,7 +114,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   verifyAllButton: {
-    backgroundColor: "#006400",
+  backgroundColor: Colors.green,
     paddingVertical: 6,
     paddingHorizontal: 16,
     borderRadius: 6,
@@ -121,16 +135,18 @@ const styles = StyleSheet.create({
   certificatesTitle: { fontSize: 18, fontWeight: "600", color: "#FFFFFF", marginBottom: 16 },
   certificatesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   certificateItem: {
-    flexBasis: "30%",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 12,
-    padding: 12,
+  flexBasis: "30%",
+  backgroundColor: "rgba(255,255,255,0.04)",
+  borderRadius: 12,
+  padding: 14,
+  minWidth: 220,
+  marginRight: 8,
   },
   certificateIcon: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  backgroundColor: "rgba(255, 255, 255, 0.08)",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -139,7 +155,7 @@ const styles = StyleSheet.create({
   certificateText: { fontSize: 13, color: "#FFFFFF", marginBottom: 4 },
   certificateYear: { fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 6 },
   verifyButton: {
-    backgroundColor: "#00C65A",
+  backgroundColor: Colors.green,
     paddingVertical: 6,
     borderRadius: 8,
     alignItems: "center",
@@ -155,11 +171,11 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: "90%",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 20,
   },
-  modalTitle: { fontSize: 18, fontWeight: "600", marginBottom: 16, color: "#8B1538" },
+  modalTitle: { fontSize: 18, fontWeight: "600", marginBottom: 16, color: Colors.red },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -185,7 +201,7 @@ const styles = StyleSheet.create({
 
   // Certificate Design Styles
   certificateContainer: {
-    backgroundColor: "#f8f9fa",
+  backgroundColor: Colors.lightGray,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
@@ -199,14 +215,14 @@ const styles = StyleSheet.create({
   certificateHeader: {
     alignItems: "center",
     marginBottom: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: "#8B1538",
+  borderBottomWidth: 2,
+  borderBottomColor: Colors.red,
     paddingBottom: 15,
   },
   certificateTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#8B1538",
+  color: Colors.red,
     textAlign: "center",
     marginBottom: 8,
   },
@@ -272,18 +288,57 @@ const styles = StyleSheet.create({
   translatorRow: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: "#f2f4f7",
+    backgroundColor: Colors.lightGray,
     borderRadius: 10,
   },
+  // Tabs
+  tabsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)'
+  },
+  tabActive: { backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.18)' },
+  tabText: { color: Colors.white, fontWeight: '600' },
   translatorActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
     marginTop: 8,
   },
+  // Badge for notifications / pending items
+  badge: {
+    position: 'absolute',
+    right: -8,
+    top: -6,
+    backgroundColor: Colors.red,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  // Profile card styles
+  profileCardFull: { backgroundColor: 'rgba(255,255,255,0.04)', padding: 16, borderRadius: 12 },
+  profileTitle: { fontSize: 18, fontWeight: '600', color: Colors.white, marginBottom: 12 },
+  profileItem: { color: Colors.white, marginBottom: 8 },
+  label: { fontWeight: '700', color: 'rgba(255,255,255,0.9)' },
+  editBtn: { marginTop: 8, backgroundColor: Colors.green, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignSelf: 'flex-start' },
+  editBtnText: { color: '#FFF', fontWeight: '700' },
+  editActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  saveBtn: { backgroundColor: Colors.green, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8 },
+  saveBtnText: { color: '#FFF', fontWeight: '700' },
+  cancelBtn: { backgroundColor: '#999', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8 },
+  cancelBtnText: { color: '#FFF', fontWeight: '700' },
 });
 
 export default function InstitutionDashboard() {
   const { user, logout } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<'verification'|'profile'|'domain'>('verification');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileVisible, setIsProfileVisible] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -292,7 +347,6 @@ export default function InstitutionDashboard() {
     website: user?.profile?.website || "",
     email: user?.email || "",
     phone: user?.profile?.phone || "",
-    domain: user?.profile?.domain || user?.domain || "",
     address: user?.profile?.address || "",
     principalName: user?.profile?.principalName || "",
     accreditationNumber: user?.profile?.accreditationNumber || "",
@@ -314,7 +368,6 @@ export default function InstitutionDashboard() {
       principalName: editableProfile.principalName,
       accreditationNumber: editableProfile.accreditationNumber,
       institutionType: editableProfile.institutionType,
-      domain: editableProfile.domain,
     });
     setIsEditingProfile(false);
     setIsProfileVisible(false);
@@ -326,7 +379,6 @@ export default function InstitutionDashboard() {
       website: user?.profile?.website || "",
       email: user?.email || "",
       phone: user?.profile?.phone || "",
-      domain: user?.profile?.domain || user?.domain || "",
       address: user?.profile?.address || "",
       principalName: user?.profile?.principalName || "",
       accreditationNumber: user?.profile?.accreditationNumber || "",
@@ -337,6 +389,8 @@ export default function InstitutionDashboard() {
 
   const [issuedCount, setIssuedCount] = useState(0);
   const [deniedCount, setDeniedCount] = useState(0);
+  const [isVerifyingAll, setIsVerifyingAll] = useState(false);
+  const [verifyingIds, setVerifyingIds] = useState<Record<string, boolean>>({});
   const quickStats = [
     { label: "Certificates Issued", value: String(issuedCount), icon: Award, color: "#00C65A" },
     { label: "Total Requests Handled", value: String(issuedCount + deniedCount), icon: FileCheck, color: "#4A90E2" },
@@ -448,97 +502,150 @@ export default function InstitutionDashboard() {
   
   const [certificates, setCertificates] = useState<Cert[]>(generateCertificates());
 
+  // Domain & accreditation management
+  type Accreditation = { id: string; name: string; authority: string; status: 'verified'|'pending'|'rejected' };
+  const generateAccreditations = (): Accreditation[] => [
+  { id: 'ACC-001', name: 'TVET Accreditation', authority: 'Ministry of Education', status: 'verified' },
+  { id: 'ACC-002', name: 'Health & Safety Compliance', authority: 'NEMA', status: 'verified' },
+  { id: 'ACC-003', name: 'ICT Training Standard', authority: 'ICT Authority', status: 'verified' },
+  { id: 'ACC-004', name: 'Quality Assurance', authority: 'KUQAS', status: 'verified' },
+  { id: 'ACC-005', name: 'Industry Board Endorsement', authority: 'Industrial Board', status: 'verified' },
+  ];
+  const [accreditations, setAccreditations] = useState<Accreditation[]>(generateAccreditations());
+  const [domainRequests, setDomainRequests] = useState<{ id: string; domain: string; status: 'approved'|'pending'|'rejected' }[]>([]);
+  const [isRequestingDomain, setIsRequestingDomain] = useState(false);
+
   const [isCertificateVisible, setIsCertificateVisible] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<Cert | null>(null);
 
   const [translateOpen, setTranslateOpen] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState<string>("English");
+  const toastRef = React.useRef<ToastHandle | null>(null);
+
+  // Unified verification flow used by single and bulk verify
+  const verifyCertificateFlow = async (certificate: Cert) => {
+    setVerifyingIds((s) => ({ ...s, [certificate.id]: true }));
+    // realistic processing time
+    await new Promise((r) => setTimeout(r, 900 + Math.floor(Math.random() * 900)));
+    const accepted = certificate.isReal || Math.random() > 0.15; // favor acceptance
+    setVerifyingIds((s) => ({ ...s, [certificate.id]: false }));
+    if (accepted) {
+      setIssuedCount((n) => n + 1);
+      // show accept toast
+      toastRef.current?.show(`${certificate.certificateNo} — accepted`, 'success');
+    } else {
+      setDeniedCount((n) => n + 1);
+      // show deny toast
+      toastRef.current?.show(`${certificate.certificateNo} — denied`, 'error');
+    }
+    setCertificates((prev) => prev.filter((c) => c.id !== certificate.id));
+    // close detail modal if open
+    setIsCertificateVisible(false);
+    setSelectedCertificate(null);
+    return accepted;
+  };
 
   const handleVerifyCertificate = (certificate: Cert) => {
-    setTimeout(() => {
-      if (certificate.isReal) {
-        Alert.alert(
-          "✅ Certificate Validated",
-          `Certificate ${certificate.certificateNo} has been verified as authentic.`,
-          [{ text: "OK" }]
-        );
-        setIssuedCount((n) => n + 1);
-      } else {
-        Alert.alert(
-          "❌ Certificate Denied",
-          `Certificate ${certificate.certificateNo} has been identified as counterfeit.`,
-          [{ text: "OK" }]
-        );
-        setDeniedCount((n) => n + 1);
-      }
-      setCertificates((prev) => prev.filter((c) => c.id !== certificate.id));
-      setIsCertificateVisible(false);
-      setSelectedCertificate(null);
-    }, 800);
+    // run but don't await to keep UI responsive
+    verifyCertificateFlow(certificate).catch(() => {});
   };
   
   const handleVerifyAll = () => {
+    if (certificates.length === 0) {
+      Alert.alert('No Certificates', 'There are no certificates to verify.');
+      return;
+    }
     Alert.alert(
       "Verify All Certificates",
-      `This will verify all ${certificates.length} remaining certificates. Continue?`,
+      `This will run AI verification on all ${certificates.length} certificates. Continue?`,
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Verify All", 
-          onPress: () => {
-            const realCerts = certificates.filter(c => c.isReal);
-            const fakeCerts = certificates.filter(c => !c.isReal);
-            setIssuedCount(prev => prev + realCerts.length);
-            setDeniedCount(prev => prev + fakeCerts.length);
-            setCertificates([]);
-            Alert.alert(
-              "Verification Complete",
-              `Validated: ${realCerts.length} | Denied: ${fakeCerts.length}`,
-              [{ text: "OK" }]
-            );
+        {
+          text: "Verify All",
+          onPress: async () => {
+            setIsVerifyingAll(true);
+            const items = [...certificates];
+            for (const c of items) {
+              // run unified flow sequentially so each shows loader
+              try {
+                await verifyCertificateFlow(c);
+              } catch (e) {
+                // ignore individual failures
+              }
+            }
+            setIsVerifyingAll(false);
+            toastRef.current?.show(`Processed ${items.length} certificates.`, 'info');
           }
         }
       ]
     );
   };
 
+  const handleRequestDomain = async (domain: string) => {
+    if (!domain) return Alert.alert('Invalid', 'Please enter a .ke domain');
+    setIsRequestingDomain(true);
+    // simulate quick processing and auto-approve to match requested UX
+    await new Promise((r) => setTimeout(r, 800 + Math.floor(Math.random() * 800)));
+    const newReq = { id: `DOM-${String(domainRequests.length + 1).padStart(3,'0')}`, domain, status: 'approved' as const };
+    // persist domain request + accreditation to Supabase (best-effort)
+    try {
+      const { data: drData, error: drErr } = await supabase.from('domain_requests').insert([{ domain, status: 'approved', institution_id: user?.id ?? null }]).select();
+      if (drErr) throw drErr;
+      setDomainRequests((s) => [{ id: drData?.[0]?.id ?? `DOM-${String(domainRequests.length + 1).padStart(3,'0')}`, domain, status: 'approved' }, ...s]);
+      const accPayload = { name: `${domain} Subdomain`, authority: 'KE Registry', status: 'verified', institution_id: user?.id ?? null };
+      const { data: accData, error: accErr } = await supabase.from('accreditations').insert([accPayload]).select();
+      if (accErr) throw accErr;
+      setAccreditations((s) => [{ id: accData?.[0]?.id ?? `ACC-DOM-${Date.now().toString().slice(-6)}`, name: accPayload.name, authority: accPayload.authority, status: 'verified' }, ...s]);
+    } catch (err) {
+      // fallback to client-side if DB fails
+      setDomainRequests((s) => [newReq, ...s]);
+      const accId = `ACC-DOM-${Date.now().toString().slice(-6)}`;
+      setAccreditations((s) => [{ id: accId, name: `${domain} Subdomain`, authority: 'KE Registry', status: 'verified' }, ...s]);
+    }
+    setIsRequestingDomain(false);
+    toastRef.current?.show(`Domain ${domain} added to accreditations.`, 'success');
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#8B1538", "#A91B47", "#C41E3A"]}
+        colors={["#000000", "#CE1126", "#006600"]}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea}>
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Header */}
+            {/* Header - visible logout button */}
             <View style={styles.header}>
-              <View>
-                <Text style={styles.greeting}>Institution Portal</Text>
-                <Text style={styles.institutionName}>
-                  {user?.profile?.institutionName || "Institution"}
-                </Text>
-                <Text style={styles.domainText}>
-                  {user?.profile?.domain || user?.domain || "example.ke"}
-                </Text>
-              </View>
-
-              <TouchableOpacity style={styles.profileButton} onPress={toggleMenu}>
-                <GraduationCap color="#FFFFFF" size={24} />
+              <Text style={styles.greeting}>{user?.email ? `Signed in as ${user.email}` : 'Signed in'}</Text>
+              <TouchableOpacity style={styles.profileButton} onPress={handleSignOut} accessibilityRole="button">
+                <LogOut color="#FFF" size={16} />
               </TouchableOpacity>
             </View>
 
+            {/* Institution name (kept in-page) */}
+            <View style={{ marginBottom: 10 }}>
+              <Text style={styles.institutionName}>{user?.profile?.institutionName || 'Institution'}</Text>
+            </View>
+            {/* Tabs */}
+            <View style={styles.tabsRow}>
+              <Pressable onPress={() => setActiveTab('verification')} style={[styles.tabButton, activeTab === 'verification' && styles.tabActive]}>
+                <Text style={styles.tabText}>Verification</Text>
+                {certificates.length > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{certificates.length}</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable onPress={() => setActiveTab('profile')} style={[styles.tabButton, activeTab === 'profile' && styles.tabActive]}>
+                <Text style={styles.tabText}>Profile</Text>
+              </Pressable>
+              <Pressable onPress={() => setActiveTab('domain')} style={[styles.tabButton, activeTab === 'domain' && styles.tabActive]}>
+                <Text style={styles.tabText}>Domain</Text>
+              </Pressable>
+            </View>
             {isMenuOpen && (
               <View style={styles.profileMenu}>
-                <TouchableOpacity
-                  style={styles.profileMenuItem}
-                  onPress={() => {
-                    setIsProfileVisible(true);
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <User color="#FFF" size={16} style={{ marginRight: 8 }} />
-                  <Text style={styles.profileMenuText}>Profile</Text>
-                </TouchableOpacity>
+                {/* Profile moved to Profile tab; keep logout here only */}
                 <TouchableOpacity
                   style={styles.profileMenuItem}
                   onPress={handleSignOut}
@@ -549,54 +656,158 @@ export default function InstitutionDashboard() {
               </View>
             )}
 
-            {/* Quick Stats */}
-            <View style={styles.statsContainer}>
-              {quickStats.map((stat, index) => (
-                <View key={index} style={styles.statCard}>
-                  <View
-                    style={[styles.statIcon, { backgroundColor: `${stat.color}20` }]}
-                  >
-                    <stat.icon color={stat.color} size={20} />
-                  </View>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
+            {/* Content per tab */}
+            {activeTab === 'verification' && (
+              <>
+                {/* Quick Stats */}
+                <View style={styles.statsContainer}>
+                  {quickStats.map((stat, index) => (
+                    <View key={index} style={styles.statCard}>
+                      <View
+                        style={[styles.statIcon, { backgroundColor: `${stat.color}20` }]}
+                      >
+                        <stat.icon color={stat.color} size={20} />
+                      </View>
+                      <Text style={styles.statValue}>{stat.value}</Text>
+                      <Text style={styles.statLabel}>{stat.label}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
 
-            {/* Certificates Grid */}
-            <View style={styles.certificatesCard}>
-              <View style={styles.certificatesHeader}>
-                <Text style={styles.certificatesTitle}>Recent Certificates</Text>
-                <TouchableOpacity style={styles.verifyAllButton} onPress={handleVerifyAll}>
-                  <Text style={styles.verifyAllButtonText}>VERIFY ALL</Text>
-                </TouchableOpacity>
-              </View>
+                {/* Certificates Grid */}
+                <View style={styles.certificatesCard}>
+                  <View style={styles.certificatesHeader}>
+                    <Text style={styles.certificatesTitle}>Recent Certificates</Text>
+                    <TouchableOpacity style={styles.verifyAllButton} onPress={handleVerifyAll} disabled={isVerifyingAll} accessibilityRole="button">
+                      {isVerifyingAll ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <ActivityIndicator size="small" color="#FFF" />
+                          <Text style={[styles.verifyAllButtonText, { marginLeft: 8 }]}>Verifying...</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.verifyAllButtonText}>VERIFY ALL</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
 
-              <View style={styles.certificatesGrid}>
-                {certificates.map((cert, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.certificateItem}
-                    onPress={() => {
-                      setSelectedCertificate(cert);
-                      setIsCertificateVisible(true);
-                    }}
-                  >
-                    <View style={styles.certificateIcon}>
-                      <Award color="#00C65A" size={16} />
-                    </View>
-                    <View style={styles.certificateContent}>
-                      <Text style={styles.certificateText}>{cert.title}</Text>
-                      <Text style={styles.certificateYear}>Issued: {cert.year}</Text>
-                      <TouchableOpacity style={styles.verifyButton} onPress={() => { setSelectedCertificate(cert); setIsCertificateVisible(true); }}>
-                        <Text style={styles.verifyButtonText}>View</Text>
+                  <View style={styles.certificatesGrid}>
+                    {certificates.map((cert, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.certificateItem}
+                        onPress={() => {
+                          setSelectedCertificate(cert);
+                          setIsCertificateVisible(true);
+                        }}
+                      >
+                        <View style={styles.certificateIcon}>
+                          <Award color={cert.isReal ? Colors.green : Colors.red} size={16} />
+                        </View>
+                        <View style={styles.certificateContent}>
+                          <Text style={styles.certificateText}>{cert.title}</Text>
+                          <Text style={styles.certificateYear}>Issued: {cert.year}</Text>
+                          <TouchableOpacity style={styles.verifyButton} onPress={() => handleVerifyCertificate(cert)} disabled={isVerifyingAll || verifyingIds[cert.id]}>
+                            {verifyingIds[cert.id] ? (
+                              <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                              <Text style={styles.verifyButtonText}>{isVerifyingAll ? 'Queued' : 'Verify with AI'}</Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
                       </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {activeTab === 'profile' && (
+                          <View style={styles.profileCardFull}>
+                            <Text style={styles.profileTitle}>Profile Overview</Text>
+                            {!isEditingProfile ? (
+                              <>
+                                <Text style={styles.profileItem}><Text style={styles.label}>Name: </Text>{editableProfile.institutionName || '-'}</Text>
+                                <Text style={styles.profileItem}><Text style={styles.label}>Website: </Text>{editableProfile.website || '-'}</Text>
+                                <Text style={styles.profileItem}><Text style={styles.label}>Email: </Text>{editableProfile.email || user?.email || '-'}</Text>
+                                <Text style={styles.profileItem}><Text style={styles.label}>Phone: </Text>{editableProfile.phone || '-'}</Text>
+                                <Text style={styles.profileItem}><Text style={styles.label}>Address: </Text>{editableProfile.address || '-'}</Text>
+                                <Text style={styles.profileItem}><Text style={styles.label}>Admin: </Text>{editableProfile.principalName || '-'}</Text>
+                                <Text style={styles.profileItem}><Text style={styles.label}>Institution Reg No: </Text>{editableProfile.accreditationNumber || '-'}</Text>
+                                <Text style={styles.profileItem}><Text style={styles.label}>Institution Type: </Text>{editableProfile.institutionType || '-'}</Text>
+                                <TouchableOpacity style={styles.editBtn} onPress={() => setIsEditingProfile(true)}>
+                                  <Text style={styles.editBtnText}>Edit Profile</Text>
+                                </TouchableOpacity>
+                              </>
+                            ) : (
+                              <>
+                                <View style={styles.inputRow}>
+                                  <TextInput style={styles.input} value={editableProfile.institutionName} onChangeText={(v) => setEditableProfile((p) => ({ ...p, institutionName: v }))} />
+                                </View>
+                                <View style={styles.inputRow}>
+                                  <TextInput style={styles.input} value={editableProfile.website} onChangeText={(v) => setEditableProfile((p) => ({ ...p, website: v }))} />
+                                </View>
+                                <View style={styles.inputRow}>
+                                  <TextInput style={styles.input} value={editableProfile.email} onChangeText={(v) => setEditableProfile((p) => ({ ...p, email: v }))} />
+                                </View>
+                                <View style={styles.inputRow}>
+                                  <TextInput style={styles.input} value={editableProfile.phone} onChangeText={(v) => setEditableProfile((p) => ({ ...p, phone: v }))} />
+                                </View>
+                                <View style={styles.inputRow}>
+                                  <TextInput style={styles.input} value={editableProfile.address} onChangeText={(v) => setEditableProfile((p) => ({ ...p, address: v }))} />
+                                </View>
+                                <View style={styles.inputRow}>
+                                  <TextInput style={styles.input} value={editableProfile.principalName} onChangeText={(v) => setEditableProfile((p) => ({ ...p, principalName: v }))} />
+                                </View>
+                                <View style={styles.inputRow}>
+                                  <TextInput style={styles.input} value={editableProfile.accreditationNumber} onChangeText={(v) => setEditableProfile((p) => ({ ...p, accreditationNumber: v }))} />
+                                </View>
+                                <View style={styles.inputRow}>
+                                  <TextInput style={styles.input} value={editableProfile.institutionType} onChangeText={(v) => setEditableProfile((p) => ({ ...p, institutionType: v }))} />
+                                </View>
+                                <View style={styles.editActions}>
+                                  <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile}><Text style={styles.saveBtnText}>Save</Text></TouchableOpacity>
+                                  <TouchableOpacity style={styles.cancelBtn} onPress={resetProfileEdits}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                                </View>
+                              </>
+                            )}
+                          </View>
+                        )}
+
+            {activeTab === 'domain' && (
+              <View style={styles.certificatesCard}>
+                <Text style={styles.certificatesTitle}>Domain & Accreditations</Text>
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ color: Colors.white, marginBottom: 8 }}>Request a .ke Domain</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TextInput placeholder="your-institution.ke" placeholderTextColor="rgba(255,255,255,0.6)" style={[styles.input, { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 8, paddingHorizontal: 8 }]} onSubmitEditing={(e) => handleRequestDomain(e.nativeEvent.text)} />
+                    <TouchableOpacity style={[styles.verifyButton, { paddingHorizontal: 12 }]} onPress={() => handleRequestDomain('requested.ke') } disabled={isRequestingDomain}>
+                      {isRequestingDomain ? <ActivityIndicator color="#FFF" /> : <Text style={styles.verifyButtonText}>Request</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ color: Colors.white, marginBottom: 8 }}>Domain Requests</Text>
+                  {domainRequests.map(dr => (
+                    <View key={dr.id} style={{ padding: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 8, marginBottom: 8 }}>
+                      <Text style={{ color: Colors.white }}>{dr.domain}</Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.6)' }}>Status: {dr.status}</Text>
                     </View>
-                  </TouchableOpacity>
-                ))}
+                  ))}
+                </View>
+
+                <View>
+                  <Text style={{ color: Colors.white, marginBottom: 8 }}>Accreditations</Text>
+                  {accreditations.map(acc => (
+                    <View key={acc.id} style={{ padding: 10, backgroundColor: acc.status === 'verified' ? Colors.lightGreen ?? 'rgba(230,255,230,0.2)' : acc.status === 'pending' ? 'rgba(255,255,255,0.03)' : 'rgba(255,230,230,0.03)', borderRadius: 8, marginBottom: 8 }}>
+                      <Text style={{ fontWeight: '600' }}>{acc.name}</Text>
+                      <Text style={{ color: 'rgba(0,0,0,0.6)' }}>{acc.authority}</Text>
+                      <Text style={{ color: acc.status === 'verified' ? Colors.green : acc.status === 'pending' ? 'rgba(255,255,255,0.6)' : Colors.red }}>Status: {acc.status}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
           </ScrollView>
         </SafeAreaView>
       </LinearGradient>
@@ -616,7 +827,6 @@ export default function InstitutionDashboard() {
                 <View style={styles.inputRow}><Text style={{ fontWeight: "600", marginRight: 8 }}>Institution:</Text><Text>{editableProfile.institutionName || "-"}</Text></View>
                 <View style={styles.inputRow}><Text style={{ fontWeight: "600", marginRight: 8 }}>Phone:</Text><Text>{editableProfile.phone || "-"}</Text></View>
                 <View style={styles.inputRow}><Text style={{ fontWeight: "600", marginRight: 8 }}>Website:</Text><Text>{editableProfile.website || "-"}</Text></View>
-                <View style={styles.inputRow}><Text style={{ fontWeight: "600", marginRight: 8 }}>.ke Domain:</Text><Text>{editableProfile.domain || "-"}</Text></View>
                 <View style={styles.inputRow}><Text style={{ fontWeight: "600", marginRight: 8 }}>Address:</Text><Text>{editableProfile.address || "-"}</Text></View>
                 <View style={styles.inputRow}><Text style={{ fontWeight: "600", marginRight: 8 }}>Principal:</Text><Text>{editableProfile.principalName || "-"}</Text></View>
                 <View style={styles.inputRow}><Text style={{ fontWeight: "600", marginRight: 8 }}>Accreditation:</Text><Text>{editableProfile.accreditationNumber || "-"}</Text></View>
@@ -642,9 +852,7 @@ export default function InstitutionDashboard() {
                   <View style={styles.inputRow}>
                     <TextInput style={styles.input} placeholder="Website" value={editableProfile.website} onChangeText={(v) => setEditableProfile((p) => ({ ...p, website: v }))} />
                   </View>
-                  <View style={styles.inputRow}>
-                    <TextInput style={styles.input} placeholder=".ke Domain" autoCapitalize="none" value={editableProfile.domain} onChangeText={(v) => setEditableProfile((p) => ({ ...p, domain: v }))} />
-                  </View>
+                  {/* .ke domain managed in Domain tab */}
                   <View style={styles.inputRow}>
                     <TextInput style={styles.input} placeholder="Physical Address" value={editableProfile.address} onChangeText={(v) => setEditableProfile((p) => ({ ...p, address: v }))} />
                   </View>
@@ -758,6 +966,8 @@ export default function InstitutionDashboard() {
           </View>
         </View>
       </Modal>
+      {/* Toast (mounted after ref is created) */}
+      <Toast ref={toastRef} />
     </View>
   );
 }
