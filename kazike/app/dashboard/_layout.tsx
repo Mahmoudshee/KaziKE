@@ -36,8 +36,7 @@ export default function DashboardLayout() {
       <Stack.Screen
         name="institution"
         options={{
-          title: "Institution Dashboard",
-          headerShown: true,
+          headerShown: false,
         }}
       />
       <Stack.Screen
