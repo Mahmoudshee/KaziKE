@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "@/lib/supabase";
 
 export type UserRole = "youth" | "employer" | "government" | "institution";
 
@@ -30,32 +31,38 @@ interface AuthState {
   selectedRole: UserRole | null;
   isLoading: boolean;
   isInitialized: boolean;
+  error: string | null;
   setSelectedRole: (role: UserRole) => void;
   setUser: (user: User) => void;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
-  signUp: (userData: Partial<User>) => Promise<User>;
-  signIn: (email: string, password: string) => Promise<User>;
+  signUp: (userData: Partial<User> & { password: string }) => Promise<User>;
+  signIn: (identifier: string, password: string) => Promise<User>;
   generateDomain: (name: string, role: UserRole) => string;
+  clearError: () => void;
+  setError: (error: string) => void;
 }
 
 const STORAGE_KEY = "@ke_identity_user";
+const USERS_MAP_KEY = "@ke_identity_users"; // Record<userId, User>
+const CREDENTIALS_KEY = "@ke_identity_credentials"; // { byEmail: Record<string,{id:string,password:string}>, byPhone: Record<string,{id:string,password:string}> }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   selectedRole: null,
   isLoading: false,
   isInitialized: false,
+  error: null,
 
   setSelectedRole: (role: UserRole) => {
     console.log("Setting selected role:", role);
-    set({ selectedRole: role });
+    set({ selectedRole: role, error: null });
   },
 
   setUser: async (user: User) => {
     console.log("Setting user:", user.email, user.role);
-    set({ user });
+    set({ user, error: null });
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(user));
     } catch (error) {
@@ -86,6 +93,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: null, selectedRole: null });
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
+      // On web, force a hard navigation to landing to reset router state
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     } catch (error) {
       console.error("Failed to clear user from storage:", error);
     }
@@ -123,96 +134,180 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return `${rolePrefix}${cleanName}${timestamp}.ke`;
   },
 
-  signUp: async (userData: Partial<User>) => {
-    set({ isLoading: true });
+  clearError: () => {
+    set({ error: null });
+  },
+
+  setError: (error: string) => {
+    set({ error });
+  },
+
+  signUp: async (userData: Partial<User> & { password: string }) => {
+    set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      // Youth flow: create user in Supabase Auth with email verification
+      if (userData.role === "youth") {
+        const fullName = userData.profile?.fullName || "user";
+        const phone = userData.profile?.phone || "";
+        const nationalId = userData.profile?.nationalId || "";
+        const dateOfBirth = userData.profile?.dateOfBirth || "";
+        const domain = get().generateDomain(fullName, "youth");
+
+        const { data, error } = await supabase.auth.signUp({
+          email: userData.email!,
+          password: userData.password,
+          options: {
+            data: { fullName, phone, nationalId, dateOfBirth, domain, role: "youth" },
+            emailRedirectTo: process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL,
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        console.log("Supabase signUp initiated for youth:", data.user?.email);
+
+        // Do NOT authenticate locally yet; wait for email confirmation
+        const tempUser: User = {
+          id: data.user?.id || `pending_${Date.now()}`,
+          email: userData.email!,
+          role: "youth",
+          isVerified: false,
+          profile: { fullName, phone, nationalId, dateOfBirth },
+          domain,
+          createdAt: new Date().toISOString(),
+        };
+
+        return tempUser;
+      }
+
+      // Use Supabase sign up for other roles as well (email verification required)
       const name = userData.profile?.fullName || userData.profile?.orgName || userData.profile?.institutionName || "user";
-      const domain = get().generateDomain(name, userData.role!);
-      
-      const newUser: User = {
-        id: `user_${Date.now()}`,
+      const role = userData.role!;
+      const domain = get().generateDomain(name, role);
+
+      const metadata: Record<string, any> = {
+        role,
+        domain,
+        fullName: userData.profile?.fullName,
+        phone: userData.profile?.phone,
+        nationalId: userData.profile?.nationalId,
+        dateOfBirth: userData.profile?.dateOfBirth,
+        orgName: userData.profile?.orgName,
+        kraPin: userData.profile?.kraPin,
+        institutionName: userData.profile?.institutionName,
+        ministry: userData.profile?.ministry,
+      };
+
+      const { data, error } = await supabase.auth.signUp({
         email: userData.email!,
-        role: userData.role!,
+        password: userData.password,
+        options: {
+          data: metadata,
+          emailRedirectTo: process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const tempUser: User = {
+        id: data.user?.id || `pending_${Date.now()}`,
+        email: userData.email!,
+        role,
         isVerified: false,
         profile: userData.profile || {},
         domain,
         createdAt: new Date().toISOString(),
       };
-      
-      console.log("Created new user:", newUser.email, newUser.domain);
-      await get().setUser(newUser);
-      
-      return newUser;
-    } catch (error) {
+
+      // Do not set user locally yet; wait for email confirmation and verification flow
+      return tempUser;
+    } catch (error: any) {
       console.error("Sign up failed:", error);
+      const errorMessage = error?.message || "Sign up failed. Please try again.";
+      set({ error: errorMessage });
       throw error;
     } finally {
       set({ isLoading: false });
     }
   },
 
-  signIn: async (email: string, password: string) => {
-    set({ isLoading: true });
+  signIn: async (identifier: string, password: string) => {
+    set({ isLoading: true, error: null });
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock authentication - in real app, this would validate against backend
-      const mockUsers: Record<string, User> = {
-        "youth@test.com": {
-          id: "user_youth",
-          email: "youth@test.com",
-          role: "youth",
-          isVerified: true,
-          profile: { fullName: "John Doe", phone: "+254712345678" },
-          domain: "johndoe1234.ke",
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-        "employer@test.com": {
-          id: "user_employer",
-          email: "employer@test.com",
-          role: "employer",
-          isVerified: true,
-          profile: { orgName: "Tech Solutions Ltd", kraPin: "A123456789B" },
-          domain: "emptechsolutions5678.ke",
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-        "gov@test.com": {
-          id: "user_government",
-          email: "gov@test.com",
-          role: "government",
-          isVerified: true,
-          profile: { fullName: "Jane Smith", ministry: "Ministry of Education" },
-          domain: "govjanesmith9012.ke",
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-        "uni@test.com": {
-          id: "user_institution",
-          email: "uni@test.com",
-          role: "institution",
-          isVerified: true,
-          profile: { institutionName: "University of Nairobi" },
-          domain: "insuniversityofnairobi3456.ke",
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-      };
-      
-      const user = mockUsers[email.toLowerCase()];
-      if (!user) {
-        throw new Error("Invalid email or password");
+      // Try Supabase (youth email/password) first
+      if (identifier.includes("@")) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: identifier,
+          password,
+        });
+        if (error && error.message) {
+          // Fall through to local if Supabase fails with specific message
+          console.warn("Supabase signIn failed:", error.message);
+        }
+        if (data?.user) {
+          const meta = (data.user as any).user_metadata || {};
+          const role: UserRole = meta.role || "youth";
+          const fullName: string | undefined = meta.fullName;
+          const phone: string | undefined = meta.phone;
+          const nationalId: string | undefined = meta.nationalId;
+          const dateOfBirth: string | undefined = meta.dateOfBirth;
+          const domain: string = meta.domain || get().generateDomain(fullName || "user", role);
+          const isVerified = Boolean((data.user as any).email_confirmed_at);
+
+          const signedInUser: User = {
+            id: data.user.id,
+            email: data.user.email || identifier,
+            role,
+            isVerified,
+            profile: { fullName, phone, nationalId, dateOfBirth },
+            domain,
+            createdAt: (data.user as any).created_at || new Date().toISOString(),
+          };
+          await get().setUser(signedInUser);
+          return signedInUser;
+        }
       }
-      
-      console.log("User signed in:", user.email, user.role);
+
+      // Fallback: existing local mock flow for other roles and phone sign-in
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const rawCreds = (await AsyncStorage.getItem(CREDENTIALS_KEY)) || "{}";
+      const creds: { byEmail?: Record<string,{id:string,password:string}>, byPhone?: Record<string,{id:string,password:string}> } = JSON.parse(rawCreds);
+      const byEmail = creds.byEmail || {};
+      const byPhone = creds.byPhone || {};
+      const identifierLower = identifier.toLowerCase();
+      const asPhone = identifier.replace(/\D/g, "");
+
+      let credential = byEmail[identifierLower];
+      if (!credential && asPhone) {
+        credential = byPhone[asPhone];
+      }
+      if (!credential) {
+        throw new Error("Account not found");
+      }
+      if (credential.password !== password) {
+        throw new Error("Invalid credentials");
+      }
+
+      const rawUsers = (await AsyncStorage.getItem(USERS_MAP_KEY)) || "{}";
+      const usersMap: Record<string, User> = JSON.parse(rawUsers);
+      const user = usersMap[credential.id];
+      if (!user) {
+        throw new Error("User data missing");
+      }
+
       await get().setUser(user);
-      
       return user;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sign in failed:", error);
+      const errorMessage = error?.message || "Sign in failed. Please try again.";
+      set({ error: errorMessage });
       throw error;
     } finally {
       set({ isLoading: false });

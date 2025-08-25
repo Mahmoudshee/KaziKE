@@ -1,11 +1,10 @@
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef } from "react";
+import { Image } from "react-native";
+import { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,6 +25,7 @@ export default function LandingScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scrollY = useRef(new Animated.Value(0)).current;
+  const isSmallScreen = width < 600;
 
   useEffect(() => {
     Animated.parallel([
@@ -68,7 +68,7 @@ export default function LandingScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["#8B1538", "#A91B47", "#C41E3A"]}
+        colors={["#000000", "#CE1126", "#006600"]}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea}>
@@ -92,7 +92,11 @@ export default function LandingScreen() {
               ]}
             >
               <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoText}>🇰🇪</Text>
+                <Image
+                  source={require("../assets/images/icon.png")}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
               
               <Text style={styles.heroTitle}>
@@ -129,41 +133,28 @@ export default function LandingScreen() {
             {/* Value Highlights */}
             <View style={styles.highlightsSection}>
               <Text style={styles.sectionTitle}>Why Choose .KE Identity?</Text>
-              
-              {valueHighlights.map((item, index) => (
-                <Animated.View
-                  key={index}
-                  style={[
-                    styles.highlightCard,
-                    {
-                      opacity: scrollY.interpolate({
-                        inputRange: [200 + index * 50, 300 + index * 50],
-                        outputRange: [0, 1],
-                        extrapolate: "clamp",
-                      }),
-                      transform: [
-                        {
-                          translateY: scrollY.interpolate({
-                            inputRange: [200 + index * 50, 300 + index * 50],
-                            outputRange: [30, 0],
-                            extrapolate: "clamp",
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                >
-                  <View style={styles.highlightIcon}>
-                    <item.icon color="#00C65A" size={24} />
-                  </View>
-                  <View style={styles.highlightContent}>
-                    <Text style={styles.highlightTitle}>{item.title}</Text>
-                    <Text style={styles.highlightDescription}>
-                      {item.description}
-                    </Text>
-                  </View>
-                </Animated.View>
-              ))}
+
+              <View style={styles.highlightsGrid}>
+                {valueHighlights.map((item, index) => (
+                  <Animated.View
+                    key={index}
+                    style={[
+                      styles.highlightCard,
+                      isSmallScreen ? styles.cardFull : styles.cardHalf,
+                    ]}
+                  >
+                    <View style={styles.highlightIcon}>
+                      <item.icon color="#00C65A" size={24} />
+                    </View>
+                    <View style={styles.highlightContent}>
+                      <Text style={styles.highlightTitle}>{item.title}</Text>
+                      <Text style={styles.highlightDescription}>
+                        {item.description}
+                      </Text>
+                    </View>
+                  </Animated.View>
+                ))}
+              </View>
             </View>
 
             {/* Footer */}
@@ -209,6 +200,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 32,
   },
+  logoImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+  },
   logoText: {
     fontSize: 32,
   },
@@ -234,7 +230,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   primaryButton: {
-    backgroundColor: "#00C65A",
+    backgroundColor: "#CE1126",
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
@@ -267,6 +263,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
+  highlightsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
   sectionTitle: {
     fontSize: 24,
     fontWeight: "bold",
@@ -281,6 +282,14 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
     alignItems: "center",
+  },
+  cardHalf: {
+    width: "48%",
+    flexBasis: "48%",
+    maxWidth: "48%",
+  },
+  cardFull: {
+    width: "100%",
   },
   highlightIcon: {
     width: 48,
@@ -312,5 +321,12 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: "rgba(255, 255, 255, 0.6)",
+  },
+  getStartedButton: {
+    backgroundColor: "#CE1126",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 20,
   },
 });

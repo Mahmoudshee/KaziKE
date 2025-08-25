@@ -41,29 +41,18 @@ export default function YouthDashboard() {
     unsaveJob
   } = useYouthStore();
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   React.useEffect(() => {
     loadProfile();
     loadApplications();
   }, [loadProfile, loadApplications]);
   
-  const handleSignOut = () => {
-    Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-            router.replace("/");
-          },
-        },
-      ]
-    );
+  const handleSignOut = async () => {
+    await logout();
+    router.replace("/");
   };
+  const toggleMenu = () => setIsMenuOpen((v) => !v);
 
   const quickStats = [
     { label: "Job Matches", value: jobMatches.length.toString(), icon: Briefcase, color: "#00C65A" },
@@ -407,10 +396,21 @@ export default function YouthDashboard() {
                 <Text style={styles.greeting}>Good morning,</Text>
                 <Text style={styles.userName}>{profile?.fullName || user?.profile?.fullName || "User"}</Text>
               </View>
-              <TouchableOpacity style={styles.profileButton}>
+              <TouchableOpacity style={styles.profileButton} onPress={toggleMenu}>
                 <User color="#FFFFFF" size={24} />
               </TouchableOpacity>
             </View>
+
+            {isMenuOpen && (
+              <View style={styles.profileMenu}>
+                <TouchableOpacity style={styles.profileMenuItem} onPress={() => setActiveTab('settings')}>
+                  <Text style={styles.profileMenuText}>Profile & Settings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.profileMenuItem} onPress={handleSignOut}>
+                  <Text style={styles.profileMenuText}>Sign Out</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Tab Content */}
             {renderTabContent()}
@@ -464,6 +464,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 20,
+  },
+  profileMenu: {
+    backgroundColor: "rgba(0,0,0,0.3)",
+    borderRadius: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  profileMenuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  profileMenuText: {
+    color: "#FFFFFF",
+    fontSize: 14,
   },
   greeting: {
     fontSize: 16,
