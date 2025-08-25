@@ -14,6 +14,12 @@ export interface UserProfile {
   ministry?: string;
   institutionName?: string;
   domain?: string;
+  // Institution-specific optional fields
+  institutionType?: string;
+  accreditationNumber?: string;
+  website?: string;
+  address?: string;
+  principalName?: string;
 }
 
 export interface User {
@@ -45,8 +51,8 @@ interface AuthState {
 }
 
 const STORAGE_KEY = "@ke_identity_user";
-const USERS_MAP_KEY = "@ke_identity_users"; // Record<userId, User>
-const CREDENTIALS_KEY = "@ke_identity_credentials"; // { byEmail: Record<string,{id:string,password:string}>, byPhone: Record<string,{id:string,password:string}> }
+const USERS_MAP_KEY = "@ke_identity_users"; 
+const CREDENTIALS_KEY = "@ke_identity_credentials"; 
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -93,9 +99,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: null, selectedRole: null });
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
-      // On web, force a hard navigation to landing to reset router state
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
       }
     } catch (error) {
       console.error("Failed to clear user from storage:", error);
@@ -104,7 +109,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   loadUser: async () => {
     if (get().isInitialized) return;
-    
+
     set({ isLoading: true });
     try {
       const userData = await AsyncStorage.getItem(STORAGE_KEY);
@@ -127,26 +132,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "")
       .substring(0, 20);
-    
+
     const timestamp = Date.now().toString().slice(-4);
     const rolePrefix = role === "youth" ? "" : role.substring(0, 3);
-    
+
     return `${rolePrefix}${cleanName}${timestamp}.ke`;
   },
 
-  clearError: () => {
-    set({ error: null });
-  },
-
-  setError: (error: string) => {
-    set({ error });
-  },
+  clearError: () => set({ error: null }),
+  setError: (error: string) => set({ error }),
 
   signUp: async (userData: Partial<User> & { password: string }) => {
     set({ isLoading: true, error: null });
-    
     try {
-      // Youth flow: create user in Supabase Auth with email verification
+      // Youth => Supabase flow
       if (userData.role === "youth") {
         const fullName = userData.profile?.fullName || "user";
         const phone = userData.profile?.phone || "";
@@ -163,13 +162,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           },
         });
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
-        console.log("Supabase signUp initiated for youth:", data.user?.email);
-
-        // Do NOT authenticate locally yet; wait for email confirmation
         const tempUser: User = {
           id: data.user?.id || `pending_${Date.now()}`,
           email: userData.email!,
@@ -183,53 +177,111 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return tempUser;
       }
 
-      // Use Supabase sign up for other roles as well (email verification required)
-      const name = userData.profile?.fullName || userData.profile?.orgName || userData.profile?.institutionName || "user";
-      const role = userData.role!;
-      const domain = get().generateDomain(name, role);
+      // Institution => Supabase flow
+      if (userData.role === "institution") {
+        const institutionName = userData.profile?.institutionName || "institution";
+        const phone = userData.profile?.phone || "";
+        const institutionType = userData.profile?.institutionType || "";
+        const accreditationNumber = userData.profile?.accreditationNumber || "";
+        const website = userData.profile?.website || "";
+        const address = userData.profile?.address || "";
+        const principalName = userData.profile?.principalName || "";
+        const domain = get().generateDomain(institutionName, "institution");
 
-      const metadata: Record<string, any> = {
-        role,
-        domain,
-        fullName: userData.profile?.fullName,
-        phone: userData.profile?.phone,
-        nationalId: userData.profile?.nationalId,
-        dateOfBirth: userData.profile?.dateOfBirth,
-        orgName: userData.profile?.orgName,
-        kraPin: userData.profile?.kraPin,
-        institutionName: userData.profile?.institutionName,
-        ministry: userData.profile?.ministry,
-      };
+        const { data, error } = await supabase.auth.signUp({
+          email: userData.email!,
+          password: userData.password,
+          options: {
+            data: { 
+              institutionName, 
+              phone, 
+              institutionType, 
+              accreditationNumber, 
+              website, 
+              address, 
+              principalName, 
+              domain, 
+              role: "institution" 
+            },
+            emailRedirectTo: process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL,
+          },
+        });
 
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email!,
-        password: userData.password,
-        options: {
-          data: metadata,
-          emailRedirectTo: process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL,
-        },
-      });
+        if (error) throw error;
 
-      if (error) {
-        throw error;
+        const tempUser: User = {
+          id: data.user?.id || `pending_${Date.now()}`,
+          email: userData.email!,
+          role: "institution",
+          isVerified: false,
+          profile: { 
+            institutionName, 
+            phone, 
+            institutionType, 
+            accreditationNumber, 
+            website, 
+            address, 
+            principalName 
+          },
+          domain,
+          createdAt: new Date().toISOString(),
+        };
+
+        return tempUser;
       }
 
-      const tempUser: User = {
-        id: data.user?.id || `pending_${Date.now()}`,
+      // Other roles => AsyncStorage mock flow
+      const name = userData.profile?.fullName || userData.profile?.orgName || userData.profile?.institutionName || "user";
+      const providedDomain = (userData as any).domain as string | undefined;
+      const domain = providedDomain?.trim()
+        ? providedDomain.trim().toLowerCase()
+        : get().generateDomain(name, userData.role!);
+
+      const newUser: User = {
+        id: `user_${Date.now()}`,
         email: userData.email!,
-        role,
-        isVerified: false,
-        profile: userData.profile || {},
+        role: userData.role!,
+        isVerified: true,
+        profile: { ...(userData.profile || {}), domain },
         domain,
         createdAt: new Date().toISOString(),
       };
 
-      // Do not set user locally yet; wait for email confirmation and verification flow
-      return tempUser;
+      const rawUsers = (await AsyncStorage.getItem(USERS_MAP_KEY)) || "{}";
+      const usersMap: Record<string, User> = JSON.parse(rawUsers);
+      usersMap[newUser.id] = newUser;
+
+      const rawCreds = (await AsyncStorage.getItem(CREDENTIALS_KEY)) || "{}";
+      const creds: {
+        byEmail?: Record<string, { id: string; password: string }>;
+        byPhone?: Record<string, { id: string; password: string }>;
+      } = JSON.parse(rawCreds);
+
+      if (!creds.byEmail) creds.byEmail = {};
+      if (!creds.byPhone) creds.byPhone = {};
+
+      const emailKey = (newUser.email || "").toLowerCase();
+      const phoneKey = (newUser.profile.phone || "").replace(/\D/g, "");
+
+      if (emailKey) {
+        if (creds.byEmail[emailKey]) throw new Error("Email already registered");
+        creds.byEmail[emailKey] = { id: newUser.id, password: userData.password };
+      }
+      if (phoneKey) {
+        if (creds.byPhone[phoneKey]) throw new Error("Phone already registered");
+        creds.byPhone[phoneKey] = { id: newUser.id, password: userData.password };
+      }
+
+      await AsyncStorage.multiSet([
+        [USERS_MAP_KEY, JSON.stringify(usersMap)],
+        [CREDENTIALS_KEY, JSON.stringify(creds)],
+      ]);
+
+      await get().setUser(newUser);
+      return newUser;
     } catch (error: any) {
       console.error("Sign up failed:", error);
-      const errorMessage = error?.message || "Sign up failed. Please try again.";
-      set({ error: errorMessage });
+      set({ error: error?.message || "Sign up failed. Please try again." });
       throw error;
     } finally {
       set({ isLoading: false });
@@ -238,47 +290,71 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signIn: async (identifier: string, password: string) => {
     set({ isLoading: true, error: null });
-    
     try {
-      // Try Supabase (youth email/password) first
+      // Try Supabase first for youth and institution emails
       if (identifier.includes("@")) {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: identifier,
           password,
         });
-        if (error && error.message) {
-          // Fall through to local if Supabase fails with specific message
-          console.warn("Supabase signIn failed:", error.message);
-        }
+
         if (data?.user) {
           const meta = (data.user as any).user_metadata || {};
           const role: UserRole = meta.role || "youth";
-          const fullName: string | undefined = meta.fullName;
-          const phone: string | undefined = meta.phone;
-          const nationalId: string | undefined = meta.nationalId;
-          const dateOfBirth: string | undefined = meta.dateOfBirth;
-          const domain: string = meta.domain || get().generateDomain(fullName || "user", role);
+          const domain = meta.domain || get().generateDomain(meta.fullName || meta.institutionName || "user", role);
           const isVerified = Boolean((data.user as any).email_confirmed_at);
 
-          const signedInUser: User = {
-            id: data.user.id,
-            email: data.user.email || identifier,
-            role,
-            isVerified,
-            profile: { fullName, phone, nationalId, dateOfBirth },
-            domain,
-            createdAt: (data.user as any).created_at || new Date().toISOString(),
-          };
+          let signedInUser: User;
+
+          if (role === "institution") {
+            signedInUser = {
+              id: data.user.id,
+              email: data.user.email || identifier,
+              role,
+              isVerified,
+              profile: {
+                institutionName: meta.institutionName,
+                phone: meta.phone,
+                institutionType: meta.institutionType,
+                accreditationNumber: meta.accreditationNumber,
+                website: meta.website,
+                address: meta.address,
+                principalName: meta.principalName,
+              },
+              domain,
+              createdAt: (data.user as any).created_at || new Date().toISOString(),
+            };
+          } else {
+            signedInUser = {
+              id: data.user.id,
+              email: data.user.email || identifier,
+              role,
+              isVerified,
+              profile: {
+                fullName: meta.fullName,
+                phone: meta.phone,
+                nationalId: meta.nationalId,
+                dateOfBirth: meta.dateOfBirth,
+              },
+              domain,
+              createdAt: (data.user as any).created_at || new Date().toISOString(),
+            };
+          }
+
           await get().setUser(signedInUser);
           return signedInUser;
         }
+
+        if (error) console.warn("Supabase signIn failed:", error.message);
       }
 
-      // Fallback: existing local mock flow for other roles and phone sign-in
-      await new Promise(resolve => setTimeout(resolve, 300));
-
+      // Fallback to AsyncStorage for other roles
       const rawCreds = (await AsyncStorage.getItem(CREDENTIALS_KEY)) || "{}";
-      const creds: { byEmail?: Record<string,{id:string,password:string}>, byPhone?: Record<string,{id:string,password:string}> } = JSON.parse(rawCreds);
+      const creds: {
+        byEmail?: Record<string, { id: string; password: string }>;
+        byPhone?: Record<string, { id: string; password: string }>;
+      } = JSON.parse(rawCreds);
+
       const byEmail = creds.byEmail || {};
       const byPhone = creds.byPhone || {};
       const identifierLower = identifier.toLowerCase();
@@ -288,26 +364,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (!credential && asPhone) {
         credential = byPhone[asPhone];
       }
-      if (!credential) {
-        throw new Error("Account not found");
-      }
-      if (credential.password !== password) {
-        throw new Error("Invalid credentials");
-      }
+      if (!credential) throw new Error("Account not found");
+      if (credential.password !== password) throw new Error("Invalid credentials");
 
       const rawUsers = (await AsyncStorage.getItem(USERS_MAP_KEY)) || "{}";
       const usersMap: Record<string, User> = JSON.parse(rawUsers);
       const user = usersMap[credential.id];
-      if (!user) {
-        throw new Error("User data missing");
-      }
+      if (!user) throw new Error("User data missing");
 
       await get().setUser(user);
       return user;
     } catch (error: any) {
       console.error("Sign in failed:", error);
-      const errorMessage = error?.message || "Sign in failed. Please try again.";
-      set({ error: errorMessage });
+      set({ error: error?.message || "Sign in failed. Please try again." });
       throw error;
     } finally {
       set({ isLoading: false });

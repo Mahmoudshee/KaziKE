@@ -1,3 +1,6 @@
 {
-  "urlRandomness": "8Vsp7l4"
+  "urlRandomness": "8Vsp7l4",
+  "dev": true,
+  "minify": false,
+  "https": false
 }

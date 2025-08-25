@@ -18,7 +18,7 @@ function RootLayoutNav() {
   }, [loadUser]);
 
   useEffect(() => {
-    // Mark mounted after first client render to avoid navigating before router is ready
+    // Ensure navigation only happens after first client render
     setHasMounted(true);
   }, []);
 
@@ -27,13 +27,18 @@ function RootLayoutNav() {
     if (isInitialized && !isLoading) {
       SplashScreen.hideAsync();
 
-      // Auto-navigate authenticated users to their dashboard
       if (user && user.isVerified) {
         console.log("Auto-navigating to dashboard:", user.role);
+        console.log("User object:", user);
         // Defer one tick to ensure navigator is mounted
         setTimeout(() => {
           router.replace(`/dashboard/${user.role}`);
         }, 0);
+      } else {
+        console.log("No user or user not verified:", {
+          user,
+          isVerified: user?.isVerified,
+        });
       }
     }
   }, [user, isInitialized, isLoading, hasMounted]);
@@ -52,6 +57,7 @@ function RootLayoutNav() {
       <Stack.Screen name="verify-institution" />
       <Stack.Screen name="verify-government" />
       <Stack.Screen name="approval-pending" />
+      <Stack.Screen name="dashboard" />
       <Stack.Screen name="dashboard/youth" />
       <Stack.Screen name="dashboard/employer" />
       <Stack.Screen name="dashboard/government" />
