@@ -2,13 +2,30 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { ArrowLeft, MapPin, DollarSign, Users, FileText, Building } from 'lucide-react-native';
+import * as FileSystem from 'expo-file-system';
 import Colors from "./constants/colors";
-import { mockCompany } from './data/mockData';
+import { useAuthStore } from '@/stores/auth-store';
 
 type JobType = 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
 type ExperienceLevel = 'Entry Level' | 'Mid Level' | 'Senior Level' | 'Executive';
 
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  applications: number;
+  status: string;
+  postedDate: string;
+  type: string;
+  description: string;
+  employerId: string;
+  createdAt: string;
+}
+
 export default function PostJobPage() {
+  const { user } = useAuthStore();
   const [jobData, setJobData] = useState({
     title: '',
     description: '',
@@ -23,6 +40,7 @@ export default function PostJobPage() {
   });
 
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const jobTypes: JobType[] = ['Full-time', 'Part-time', 'Contract', 'Internship'];
   const experienceLevels: ExperienceLevel[] = ['Entry Level', 'Mid Level', 'Senior Level', 'Executive'];
@@ -49,23 +67,162 @@ export default function PostJobPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePostJob = () => {
-    if (!mockCompany.verified) {
-      Alert.alert('Verification Required', 'Please complete account verification to post jobs.');
+  const saveJobToFile = async (newJob: Job) => {
+    try {
+      console.log('New job to save:', newJob);
+      
+      let existingJobs: Job[] = [];
+      
+      // Try localStorage first (for web)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const storedJobs = localStorage.getItem('jobs');
+        if (storedJobs) {
+          existingJobs = JSON.parse(storedJobs);
+          console.log('Existing jobs loaded from localStorage:', existingJobs.length);
+        }
+        
+        // Also try to load from backup file if localStorage is empty
+        if (existingJobs.length === 0) {
+          try {
+            const backupPath = `${FileSystem.documentDirectory}jobs_backup.json`;
+            const backupData = await FileSystem.readAsStringAsync(backupPath);
+            existingJobs = JSON.parse(backupData);
+            console.log('✅ Loaded jobs from backup file:', existingJobs.length);
+            // Restore to localStorage
+            localStorage.setItem('jobs', JSON.stringify(existingJobs, null, 2));
+          } catch (backupError) {
+            console.log('No backup file found, starting fresh');
+          }
+        }
+      } else {
+        // Mobile: Try main file first, then backup
+        try {
+          const jobsFilePath = `${FileSystem.documentDirectory}jobs.json`;
+          const existingData = await FileSystem.readAsStringAsync(jobsFilePath);
+          existingJobs = JSON.parse(existingData);
+          console.log('Existing jobs loaded from main file:', existingJobs.length);
+        } catch (error) {
+                  // Try backup file
+        try {
+          const backupPath = `${FileSystem.documentDirectory}jobs_backup.json`;
+          const backupData = await FileSystem.readAsStringAsync(backupPath);
+          existingJobs = JSON.parse(backupData);
+          console.log('✅ Loaded jobs from backup file:', existingJobs.length);
+          // Restore to main file
+          const jobsFilePath = `${FileSystem.documentDirectory}jobs.json`;
+          await FileSystem.writeAsStringAsync(jobsFilePath, JSON.stringify(existingJobs, null, 2));
+        } catch (backupError) {
+            console.log('No backup file found, starting fresh');
+            existingJobs = [];
+          }
+        }
+      }
+      
+      // Add new job to array
+      existingJobs.push(newJob);
+      console.log('Total jobs after adding new one:', existingJobs.length);
+      
+      // Save to localStorage (for web) or file system (for mobile)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('jobs', JSON.stringify(existingJobs, null, 2));
+        console.log('✅ Job saved successfully to localStorage');
+        console.log('💾 localStorage now contains:', localStorage.getItem('jobs'));
+        
+        // Also create backup file for web users
+        try {
+          const backupPath = `${FileSystem.documentDirectory}jobs_backup.json`;
+          await FileSystem.writeAsStringAsync(backupPath, JSON.stringify(existingJobs, null, 2));
+          console.log('✅ Backup created for web user');
+        } catch (backupError) {
+          console.log('Could not create backup file (web user)');
+        }
+      } else {
+        const jobsFilePath = `${FileSystem.documentDirectory}jobs.json`;
+        await FileSystem.writeAsStringAsync(jobsFilePath, JSON.stringify(existingJobs, null, 2));
+        console.log('✅ Job saved successfully to main file');
+        
+        // Create backup file
+        const backupPath = `${FileSystem.documentDirectory}jobs_backup.json`;
+        await FileSystem.writeAsStringAsync(backupPath, JSON.stringify(existingJobs, null, 2));
+        console.log('✅ Backup file created');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving job:', error);
+      return false;
+    }
+  };
+
+  const handlePostJob = async () => {
+    console.log('handlePostJob called');
+    console.log('user:', user);
+    
+    if (!validateForm()) {
+      console.log('Form validation failed');
       return;
     }
-    
-    if (validateForm()) {
-      Alert.alert(
-        'Job Posted Successfully!', 
-        'Your job posting has been submitted and will be reviewed within 24 hours.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
+
+    if (!user?.id) {
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Create new job object
+      const newJob: Job = {
+        id: `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        title: jobData.title.trim(),
+        company: 'TechCorp Kenya', // You can make this dynamic later
+        location: jobData.location.trim(),
+        salary: `KSh ${jobData.salaryMin} - ${jobData.salaryMax}`,
+        applications: 0,
+        status: 'Active',
+        postedDate: new Date().toLocaleDateString(),
+        type: jobData.type,
+        description: jobData.description.trim(),
+        employerId: user.id,
+        createdAt: new Date().toISOString()
+      };
+
+      // Save job to file
+      const saveSuccess = await saveJobToFile(newJob);
+      
+             if (saveSuccess) {
+         // Clear the form
+         setJobData({
+           title: '',
+           description: '',
+           requirements: '',
+           location: '',
+           salaryMin: '',
+           salaryMax: '',
+           type: 'Full-time',
+           experienceLevel: 'Mid Level',
+           skills: '',
+           benefits: ''
+         });
+         setErrors({});
+         
+         Alert.alert(
+           'Job Posted Successfully!', 
+           'Your job posting has been submitted and will be reviewed within 24 hours.',
+           [
+             {
+               text: 'OK',
+               onPress: () => router.replace('/dashboard/tabs/jobs')
+             }
+           ]
+         );
+       } else {
+        Alert.alert('Error', 'Failed to save job. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', `Failed to post job: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -95,17 +252,10 @@ export default function PostJobPage() {
         }} 
       />
       
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.content}>
-          {!mockCompany.verified && (
-            <View style={styles.warningBanner}>
-              <Text style={styles.warningText}>
-                ⚠️ Account verification pending. Complete verification to post jobs.
-              </Text>
-            </View>
-          )}
-          
-          {/* Job Title */}
+             <ScrollView style={styles.scrollView}>
+         <View style={styles.content}>
+           
+           {/* Job Title */}
           <View style={styles.section}>
             <Text style={styles.label}>Job Title *</Text>
             <View style={styles.inputContainer}>
@@ -281,16 +431,19 @@ export default function PostJobPage() {
             </View>
           </View>
 
-          {/* Post Job Button */}
-          <TouchableOpacity 
-            style={[
-              styles.postButton, 
-              !mockCompany.verified && styles.disabledButton
-            ]} 
-            onPress={handlePostJob}
-          >
-            <Text style={styles.postButtonText}>Post Job</Text>
-          </TouchableOpacity>
+                     {/* Post Job Button */}
+           <TouchableOpacity 
+             style={[
+               styles.postButton, 
+               isSubmitting && styles.disabledButton
+             ]} 
+             onPress={handlePostJob}
+             disabled={isSubmitting}
+           >
+             <Text style={styles.postButtonText}>
+               {isSubmitting ? 'Posting...' : 'Post Job'}
+             </Text>
+           </TouchableOpacity>
           
           <View style={styles.bottomSpacing} />
         </View>
@@ -313,19 +466,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
-  warningBanner: {
-    backgroundColor: Colors.lightRed,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.red,
-  },
-  warningText: {
-    color: Colors.red,
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  
   section: {
     marginBottom: 20,
   },

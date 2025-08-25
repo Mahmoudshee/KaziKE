@@ -1,14 +1,23 @@
+
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
-import { User, Globe, Mail, Phone, MapPin, LogOut, Shield } from 'lucide-react-native';
+import { User as UserIcon, Globe, Mail, Phone, MapPin, LogOut, Shield } from 'lucide-react-native';
 import Colors from '../constants/colors';
-import { mockCompany } from '../data/mockData';
+import { useAuthStore } from '@/stores/auth-store';
 
 export default function SettingsTab() {
+  const { user, logout } = useAuthStore();
+
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => console.log('Signed out') },
+      { 
+        text: 'Sign Out', 
+        style: 'destructive', 
+        onPress: async () => {
+          await logout();
+        } 
+      },
     ]);
   };
 
@@ -16,38 +25,57 @@ export default function SettingsTab() {
     Alert.alert('Account Verification', 'Verification process will be available soon.');
   };
 
+  if (!user) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: Colors.gray }}>No user logged in</Text>
+      </View>
+    );
+  }
+
+
+  const companyName =
+    user.profile?.fullName ||
+    user.profile?.orgName ||
+    user.profile?.fullName ||
+    (user.email ? user.email.split('@')[0] : "Unknown");
+
+  const isVerified = user.isVerified;
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
+        {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
-              <User color={Colors.white} size={32} />
+              <UserIcon color={Colors.white} size={32} />
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.companyName}>{mockCompany.name}</Text>
+              <Text style={styles.companyName}>{companyName}</Text>
               <View style={styles.verificationStatus}>
                 <Shield 
-                  color={mockCompany.verified ? Colors.green : Colors.red} 
+                  color={isVerified ? Colors.green : Colors.red} 
                   size={16} 
                 />
                 <Text style={[
                   styles.verificationText,
-                  { color: mockCompany.verified ? Colors.green : Colors.red }
+                  { color: isVerified ? Colors.green : Colors.red }
                 ]}>
-                  {mockCompany.verified ? 'Verified' : 'Pending Verification'}
+                  {isVerified ? 'Verified' : 'Pending Verification'}
                 </Text>
               </View>
             </View>
           </View>
           
-          {!mockCompany.verified && (
+          {!isVerified && (
             <TouchableOpacity style={styles.verifyButton} onPress={handleVerification}>
               <Text style={styles.verifyButtonText}>Complete Verification</Text>
             </TouchableOpacity>
           )}
         </View>
 
+        {/* Info Card */}
         <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>Company Information</Text>
           
@@ -55,7 +83,7 @@ export default function SettingsTab() {
             <Globe color={Colors.gray} size={20} />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Domain</Text>
-              <Text style={styles.infoValue}>{mockCompany.domain}</Text>
+              <Text style={styles.infoValue}>{user.domain || 'N/A'}</Text>
             </View>
           </View>
           
@@ -63,27 +91,32 @@ export default function SettingsTab() {
             <Mail color={Colors.gray} size={20} />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{mockCompany.email}</Text>
+              <Text style={styles.infoValue}>{user.email}</Text>
             </View>
           </View>
           
-          <View style={styles.infoItem}>
-            <Phone color={Colors.gray} size={20} />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Phone</Text>
-              <Text style={styles.infoValue}>{mockCompany.phone}</Text>
+          {user.profile?.phone && (
+            <View style={styles.infoItem}>
+              <Phone color={Colors.gray} size={20} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoValue}>{user.profile.phone}</Text>
+              </View>
             </View>
-          </View>
+          )}
           
-          <View style={styles.infoItem}>
-            <MapPin color={Colors.gray} size={20} />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Location</Text>
-              <Text style={styles.infoValue}>{mockCompany.location}</Text>
+          {user.profile?.ministry && (
+            <View style={styles.infoItem}>
+              <MapPin color={Colors.gray} size={20} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Ministry</Text>
+                <Text style={styles.infoValue}>{user.profile.ministry}</Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
+        {/* Sign Out Button */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <LogOut color={Colors.white} size={20} />
           <Text style={styles.signOutText}>Sign Out</Text>
@@ -208,3 +241,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

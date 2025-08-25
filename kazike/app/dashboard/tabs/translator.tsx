@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Home, Briefcase, Users, BarChart3, Settings, Languages } from "lucide-react-native";
 import React from "react";
-import Colors from '../constants/colors';
+import Colors from "../constants/colors";
 
 export default function TabLayout() {
   return (
@@ -56,7 +56,7 @@ export default function TabLayout() {
         name="translator"
         options={{
           title: "Translator",
-          headerTitle: "Translator",
+          headerTitle: "Document Translator",
           tabBarIcon: ({ color }) => <Languages color={color} size={24} />,
         }}
       />
