@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
+import { router } from "expo-router";
 
 export type UserRole = "youth" | "employer" | "government" | "institution";
 
@@ -88,20 +89,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+ 
   logout: async () => {
     console.log("Logging out user");
-    set({ user: null, selectedRole: null });
     try {
+      await supabase.auth.signOut();        
       await AsyncStorage.removeItem(STORAGE_KEY);
-      // On web, force a hard navigation to landing to reset router state
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
+      set({ user: null, selectedRole: null });
+      
+      router.replace("/");             
     } catch (error) {
-      console.error("Failed to clear user from storage:", error);
+      console.error("Failed to logout:", error);
     }
   },
-
+  
   loadUser: async () => {
     if (get().isInitialized) return;
     
