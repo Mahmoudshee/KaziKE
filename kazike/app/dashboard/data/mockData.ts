@@ -104,6 +104,6 @@ export const mockJobs = [
     email: 'hr@techcorp.ke',
     phone: '+254 700 123 456',
     location: 'Nairobi, Kenya',
-    verified: false,
+    verified: true,
     registrationDate: '2024-01-01'
   };

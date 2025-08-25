@@ -1,89 +1,121 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
-import { User, Globe, Mail, Phone, MapPin, LogOut, Shield } from 'lucide-react-native';
-import Colors from '../constants/colors';
-import { mockCompany } from '../data/mockData';
+
+
+import React from "react";
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert } from "react-native";
+import { User as UserIcon, Globe, Mail, Phone, MapPin, LogOut, Shield } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import Colors from "../constants/colors";
+import { useAuthStore } from "@/stores/auth-store";
 
 export default function SettingsTab() {
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
+
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => console.log('Signed out') },
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          router.replace("/"); 
+        },
+      },
     ]);
   };
 
   const handleVerification = () => {
-    Alert.alert('Account Verification', 'Verification process will be available soon.');
+    Alert.alert("Account Verification", "Verification process will be available soon.");
   };
+
+  if (!user) {
+    
+    return null;
+  }
+
+  const companyName =
+    user.profile?.fullName ||
+    user.profile?.orgName ||
+    user.profile?.fullName ||
+    (user.email ? user.email.split("@")[0] : "Unknown");
+
+  const isVerified = user.isVerified;
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
+        {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
-              <User color={Colors.white} size={32} />
+              <UserIcon color={Colors.white} size={32} />
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.companyName}>{mockCompany.name}</Text>
+              <Text style={styles.companyName}>{companyName}</Text>
               <View style={styles.verificationStatus}>
-                <Shield 
-                  color={mockCompany.verified ? Colors.green : Colors.red} 
-                  size={16} 
-                />
-                <Text style={[
-                  styles.verificationText,
-                  { color: mockCompany.verified ? Colors.green : Colors.red }
-                ]}>
-                  {mockCompany.verified ? 'Verified' : 'Pending Verification'}
+                <Shield color={isVerified ? Colors.green : Colors.red} size={16} />
+                <Text
+                  style={[
+                    styles.verificationText,
+                    { color: isVerified ? Colors.green : Colors.red },
+                  ]}
+                >
+                  {isVerified ? "Verified" : "Pending Verification"}
                 </Text>
               </View>
             </View>
           </View>
-          
-          {!mockCompany.verified && (
+
+          {!isVerified && (
             <TouchableOpacity style={styles.verifyButton} onPress={handleVerification}>
               <Text style={styles.verifyButtonText}>Complete Verification</Text>
             </TouchableOpacity>
           )}
         </View>
 
+        {/* Info Card */}
         <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>Company Information</Text>
-          
+
           <View style={styles.infoItem}>
             <Globe color={Colors.gray} size={20} />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Domain</Text>
-              <Text style={styles.infoValue}>{mockCompany.domain}</Text>
+              <Text style={styles.infoValue}>{user.domain || "N/A"}</Text>
             </View>
           </View>
-          
+
           <View style={styles.infoItem}>
             <Mail color={Colors.gray} size={20} />
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{mockCompany.email}</Text>
+              <Text style={styles.infoValue}>{user.email}</Text>
             </View>
           </View>
-          
-          <View style={styles.infoItem}>
-            <Phone color={Colors.gray} size={20} />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Phone</Text>
-              <Text style={styles.infoValue}>{mockCompany.phone}</Text>
+
+          {user.profile?.phone && (
+            <View style={styles.infoItem}>
+              <Phone color={Colors.gray} size={20} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoValue}>{user.profile.phone}</Text>
+              </View>
             </View>
-          </View>
-          
-          <View style={styles.infoItem}>
-            <MapPin color={Colors.gray} size={20} />
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Location</Text>
-              <Text style={styles.infoValue}>{mockCompany.location}</Text>
+          )}
+
+          {user.profile?.ministry && (
+            <View style={styles.infoItem}>
+              <MapPin color={Colors.gray} size={20} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Ministry</Text>
+                <Text style={styles.infoValue}>{user.profile.ministry}</Text>
+              </View>
             </View>
-          </View>
+          )}
         </View>
 
+        {/* Sign Out Button */}
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <LogOut color={Colors.white} size={20} />
           <Text style={styles.signOutText}>Sign Out</Text>
@@ -113,8 +145,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
   },
   avatarContainer: {
@@ -122,8 +154,8 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: Colors.black,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 16,
   },
   profileInfo: {
@@ -131,29 +163,29 @@ const styles = StyleSheet.create({
   },
   companyName: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.black,
     marginBottom: 4,
   },
   verificationStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   verificationText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   verifyButton: {
     backgroundColor: Colors.red,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   verifyButtonText: {
     color: Colors.white,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   infoCard: {
     backgroundColor: Colors.white,
@@ -168,13 +200,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.black,
     marginBottom: 16,
   },
   infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.lightGray,
@@ -191,13 +223,13 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 16,
     color: Colors.black,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   signOutButton: {
     backgroundColor: Colors.red,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
@@ -205,6 +237,6 @@ const styles = StyleSheet.create({
   signOutText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

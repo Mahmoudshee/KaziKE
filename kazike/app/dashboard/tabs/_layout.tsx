@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Home, Briefcase, Users, BarChart3, Settings } from "lucide-react-native";
+import { Home, Briefcase, Users, BarChart3, Settings, Languages } from "lucide-react-native";
 import React from "react";
 import Colors from '../constants/colors';
 
@@ -50,6 +50,14 @@ export default function TabLayout() {
           title: "Analytics",
           headerTitle: "Analytics",
           tabBarIcon: ({ color }) => <BarChart3 color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="translator"
+        options={{
+          title: "Translator",
+          headerTitle: "Translator",
+          tabBarIcon: ({ color }) => <Languages color={color} size={24} />,
         }}
       />
       <Tabs.Screen

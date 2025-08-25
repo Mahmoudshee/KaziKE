@@ -8,6 +8,8 @@ const Colors = {
     lightRed: '#FFE5E5',
     lightGreen: '#E5F5E5',
     shadow: 'rgba(0, 0, 0, 0.1)',
+    blue: '#007AFF',
+    orange: '#FF9500',
   };
   
   export default Colors;

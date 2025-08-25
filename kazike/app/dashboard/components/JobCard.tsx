@@ -17,15 +17,13 @@ interface Job {
 
 interface JobCardProps {
   job: Job;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export default function JobCard({ job }: JobCardProps) {
+export default function JobCard({ job, onEdit, onDelete }: JobCardProps) {
   const handleViewApplications = () => {
     Alert.alert('View Applications', `${job.applications} applications for ${job.title}`);
-  };
-
-  const handleJobActions = () => {
-    Alert.alert('Job Actions', 'Edit, pause, or delete this job posting');
   };
 
   return (
@@ -45,9 +43,18 @@ export default function JobCard({ job }: JobCardProps) {
             </Text>
           </View>
         </View>
-        <TouchableOpacity onPress={handleJobActions}>
-          <MoreVertical color={Colors.gray} size={20} />
-        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          {onEdit && (
+            <TouchableOpacity style={styles.actionButton} onPress={onEdit}>
+              <Text style={styles.actionButtonText}>Edit</Text>
+            </TouchableOpacity>
+          )}
+          {onDelete && (
+            <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       
       <View style={styles.details}>
@@ -160,6 +167,32 @@ const styles = StyleSheet.create({
   viewButtonText: {
     color: Colors.white,
     fontSize: 14,
+    fontWeight: '600',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    backgroundColor: Colors.orange,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  actionButtonText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: Colors.red,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  deleteButtonText: {
+    color: Colors.white,
+    fontSize: 12,
     fontWeight: '600',
   },
 });
