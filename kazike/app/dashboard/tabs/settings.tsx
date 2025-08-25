@@ -1,7 +1,7 @@
 
 
 import React from "react";
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert } from "react-native";
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { User as UserIcon, Globe, Mail, Phone, MapPin, LogOut, Shield } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import Colors from "../constants/colors";
@@ -11,18 +11,10 @@ export default function SettingsTab() {
   const { user, logout } = useAuthStore();
   const router = useRouter();
 
-  const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/"); 
-        },
-      },
-    ]);
+  const handleSignOut = async () => {
+    await logout();
+    try { (router as any).dismissAll?.(); } catch {}
+    router.replace("/");
   };
 
   const handleVerification = () => {

@@ -23,6 +23,7 @@ import {
 } from "lucide-react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useAuthStore } from "@/stores/auth-store";
+import DomainManager from "./components/DomainManager";
 import Toast, { ToastHandle } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import Colors from "./constants/colors";
@@ -561,7 +562,7 @@ export default function InstitutionDashboard() {
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Verify All",
+          text: "Verify All With AI",
           onPress: async () => {
             setIsVerifyingAll(true);
             const items = [...certificates];
@@ -775,37 +776,8 @@ export default function InstitutionDashboard() {
 
             {activeTab === 'domain' && (
               <View style={styles.certificatesCard}>
-                <Text style={styles.certificatesTitle}>Domain & Accreditations</Text>
-                <View style={{ marginBottom: 12 }}>
-                  <Text style={{ color: Colors.white, marginBottom: 8 }}>Request a .ke Domain</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                    <TextInput placeholder="your-institution.ke" placeholderTextColor="rgba(255,255,255,0.6)" style={[styles.input, { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 8, paddingHorizontal: 8 }]} onSubmitEditing={(e) => handleRequestDomain(e.nativeEvent.text)} />
-                    <TouchableOpacity style={[styles.verifyButton, { paddingHorizontal: 12 }]} onPress={() => handleRequestDomain('requested.ke') } disabled={isRequestingDomain}>
-                      {isRequestingDomain ? <ActivityIndicator color="#FFF" /> : <Text style={styles.verifyButtonText}>Request</Text>}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={{ marginBottom: 12 }}>
-                  <Text style={{ color: Colors.white, marginBottom: 8 }}>Domain Requests</Text>
-                  {domainRequests.map(dr => (
-                    <View key={dr.id} style={{ padding: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 8, marginBottom: 8 }}>
-                      <Text style={{ color: Colors.white }}>{dr.domain}</Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.6)' }}>Status: {dr.status}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                <View>
-                  <Text style={{ color: Colors.white, marginBottom: 8 }}>Accreditations</Text>
-                  {accreditations.map(acc => (
-                    <View key={acc.id} style={{ padding: 10, backgroundColor: acc.status === 'verified' ? Colors.lightGreen ?? 'rgba(230,255,230,0.2)' : acc.status === 'pending' ? 'rgba(255,255,255,0.03)' : 'rgba(255,230,230,0.03)', borderRadius: 8, marginBottom: 8 }}>
-                      <Text style={{ fontWeight: '600' }}>{acc.name}</Text>
-                      <Text style={{ color: 'rgba(0,0,0,0.6)' }}>{acc.authority}</Text>
-                      <Text style={{ color: acc.status === 'verified' ? Colors.green : acc.status === 'pending' ? 'rgba(255,255,255,0.6)' : Colors.red }}>Status: {acc.status}</Text>
-                    </View>
-                  ))}
-                </View>
+                <Text style={styles.certificatesTitle}>Domain</Text>
+                <DomainManager />
               </View>
             )}
           </ScrollView>

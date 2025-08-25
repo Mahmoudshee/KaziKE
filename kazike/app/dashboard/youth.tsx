@@ -15,16 +15,11 @@ import {
 import * as DocumentPicker from "expo-document-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  Globe,
   FileText,
-  Bell,
-  Settings,
   Briefcase,
   User,
   LogOut,
   Home,
-  CheckCircle,
-  Award,
   MessageCircle,
   X,
   FileUp,
@@ -32,16 +27,10 @@ import {
 } from "lucide-react-native";
 import { useAuthStore } from "@/stores/auth-store";
 import { useYouthStore } from "@/stores/youth-store";
+import { mockJobs as baseMockJobs } from "@/mocks/jobs";
+import DomainManager from "./components/DomainManager";
 
-type TabType =
-  | "home"
-  | "profile"
-  | "jobs"
-  | "domain"
-  | "applications"
-  | "cv-services"
-  | "notifications"
-  | "settings";
+type TabType = "portfolio" | "profile" | "jobs" | "cv";
 
 interface TranslationMessage {
   id: number;
@@ -65,8 +54,15 @@ export default function YouthDashboard() {
     unsaveJob,
   } = useYouthStore();
 
-  const [activeTab, setActiveTab] = useState<TabType>("home");
+  const [activeTab, setActiveTab] = useState<TabType>("portfolio");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMatching, setIsMatching] = useState(false);
+  const [matchedJobs, setMatchedJobs] = useState<any[]>([]);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [showProjects, setShowProjects] = useState(false);
+  const [showCerts, setShowCerts] = useState(false);
+  const [showHustles, setShowHustles] = useState(false);
+  const [showCVSummary, setShowCVSummary] = useState(false);
 
   // CV Translation Chatbot State
   const [showTranslationChat, setShowTranslationChat] = useState(false);
@@ -353,20 +349,16 @@ export default function YouthDashboard() {
   };
 
   const quickStats = [
-    { label: "Job Matches", value: `${jobMatches.length}`, icon: Briefcase, color: "#00C65A" },
+    { label: "Job Matches", value: `${(matchedJobs.length || jobMatches.length)}`, icon: Briefcase, color: "#00C65A" },
     { label: "Profile Views", value: "45", icon: User, color: "#4A90E2" },
     { label: "Applications", value: `${applications.length}`, icon: FileText, color: "#FF6B35" },
   ];
 
   const tabs = [
-    { id: "home" as TabType, title: "Home", icon: Home },
+    { id: "portfolio" as TabType, title: "Portfolio", icon: Home },
     { id: "profile" as TabType, title: "Profile", icon: User },
     { id: "jobs" as TabType, title: "Jobs", icon: Briefcase },
-    { id: "domain" as TabType, title: "Domain", icon: Globe },
-    { id: "cv-services" as TabType, title: "CV", icon: FileText },
-    { id: "applications" as TabType, title: "Apps", icon: FileText },
-    { id: "notifications" as TabType, title: "Alerts", icon: Bell },
-    { id: "settings" as TabType, title: "Settings", icon: Settings },
+    { id: "cv" as TabType, title: "CV", icon: FileText },
   ];
 
   const getStatusColor = (status: string) => {
@@ -386,8 +378,8 @@ export default function YouthDashboard() {
     }
   };
 
-  // Render functions (kept concise)
-  const renderHomeTab = () => (
+  // Render functions
+  const renderPortfolioTab = () => (
     <>
       <View style={styles.statsContainer}>
         {quickStats.map((stat, i) => (
@@ -401,49 +393,91 @@ export default function YouthDashboard() {
         ))}
       </View>
 
-      <View style={styles.domainCard}>
-        <View style={styles.domainHeader}>
-          <Globe color="#00C65A" size={24} />
-          <Text style={styles.domainTitle}>Your .KE Domain</Text>
-        </View>
-        <Text style={styles.domainUrl}>{user?.domain || "yourname.ke"}</Text>
-        <Text style={styles.domainStatus}>✅ Active & Verified</Text>
-        <TouchableOpacity style={styles.viewDomainButton} onPress={() => setActiveTab("domain")}>
-          <Text style={styles.viewDomainText}>View Portfolio</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.sectionCard} onPress={() => setShowProjects(true)}>
+        <Text style={styles.sectionTitle}>Personal Projects</Text>
+        <Text style={styles.sectionHint}>Showcase your best work. Tap to view examples.</Text>
+      </TouchableOpacity>
 
-      <View style={styles.jobMatchesCard}>
-        <Text style={styles.jobMatchesTitle}>Recent Job Matches</Text>
-        {jobMatches.slice(0, 2).map((job: any) => (
-          <View key={job.id} style={styles.jobItem}>
-            <View style={styles.jobContent}>
-              <Text style={styles.jobTitle}>{job.title}</Text>
-              <Text style={styles.jobCompany}>{job.company}</Text>
-              <Text style={styles.jobSalary}>{job.salary}</Text>
-              <View style={styles.matchScore}>
-                <Text style={styles.matchScoreText}>{job.matchScore}% match</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.applyButton} onPress={() => handleApplyToJob(job.id)}>
-              <Text style={styles.applyButtonText}>Apply</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-        <TouchableOpacity style={styles.viewAllButton} onPress={() => setActiveTab("jobs")}>
-          <Text style={styles.viewAllText}>View All Jobs</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.sectionCard} onPress={() => setShowCerts(true)}>
+        <Text style={styles.sectionTitle}>Certificates & Accreditations</Text>
+        <Text style={styles.sectionHint}>Upload or link verified certificates to boost credibility.</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.sectionCard} onPress={() => setShowHustles(true)}>
+        <Text style={styles.sectionTitle}>Side Hustles</Text>
+        <Text style={styles.sectionHint}>List side gigs and freelance work you are proud of.</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.sectionCard} onPress={() => setShowCVSummary(true)}>
+        <Text style={styles.sectionTitle}>CV</Text>
+        <Text style={styles.sectionHint}>Manage and translate your CV in the CV tab.</Text>
+      </TouchableOpacity>
+
+      {/* Portfolio embeds Domain manager for edit/save/publish with payment */}
+      <View style={{ marginTop: 8 }}>
+        <Text style={styles.sectionTitle}>profile-domain</Text>
+        <DomainManager />
       </View>
     </>
   );
 
+  const handleAIMatch = async () => {
+    setIsMatching(true);
+    await new Promise((r) => setTimeout(r, 1500));
+    const safeMock = Array.isArray(baseMockJobs) && baseMockJobs.length
+      ? baseMockJobs
+      : [
+          { id: "j1", title: "Junior Frontend Developer", company: "Nairobi Tech", location: "Nairobi", type: "full-time", salary: "KES 80,000", applicants: 12 },
+          { id: "j2", title: "Mobile App Intern", company: "Mombasa Labs", location: "Mombasa", type: "internship", salary: "KES 20,000", applicants: 5 },
+          { id: "j3", title: "Data Entry Assistant", company: "Gov Services", location: "Remote", type: "contract", salary: "KES 50,000", applicants: 9 },
+          { id: "j4", title: "Backend Developer", company: "CloudKenya", location: "Remote", type: "full-time", salary: "KES 150,000", applicants: 3 },
+          { id: "j5", title: "Graphic Designer", company: "Creative Hub", location: "Nakuru", type: "part-time", salary: "KES 40,000", applicants: 6 },
+          { id: "j6", title: "IT Support", company: "EduNet", location: "Kisumu", type: "full-time", salary: "KES 60,000", applicants: 7 },
+        ];
+    const fromStore = (jobMatches && jobMatches.length ? jobMatches : safeMock.slice(0, 6)).map((j: any) => ({ ...j, applied: false }));
+    setMatchedJobs(fromStore);
+    setIsMatching(false);
+  };
+
+  const handleApplyOne = async (jobId: string) => {
+    setApplyingId(jobId);
+    try { await applyToJob(jobId); } catch {}
+    await new Promise(r => setTimeout(r, 500));
+    setMatchedJobs((arr) => arr.map(j => j.id === jobId ? { ...j, applied: true } : j));
+    setApplyingId(null);
+  };
+
+  const handleAutoApplyAll = async () => {
+    const list = (matchedJobs.length ? matchedJobs : []).map(j => j.id);
+    for (const id of list) {
+      await handleApplyOne(id);
+    }
+    Alert.alert("Applications Sent", "Check your email for job feedback.");
+  };
+
   const renderJobsTab = () => (
     <View style={styles.tabContent}>
-      <Text style={styles.tabTitle}>Job Matches</Text>
-      <Text style={styles.tabSubtitle}>AI-powered opportunities tailored for you</Text>
+      <Text style={styles.tabTitle}>Jobs</Text>
+      <Text style={styles.tabSubtitle}>AI job matching and one-click auto-apply</Text>
 
-      {jobMatches.map((job: any) => {
-        const isApplied = applications.some((app: any) => app.jobId === job.id);
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <TouchableOpacity style={[styles.aiMatchButton, { flex: 1 }]} onPress={handleAIMatch} disabled={isMatching}>
+          <Text style={styles.aiMatchText}>{isMatching ? "Matching..." : "AI Job Matching"}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.autoApplyAllBtn, { flex: 1 }]} onPress={handleAutoApplyAll} disabled={isMatching || (!matchedJobs.length && !jobMatches.length)}>
+          <Text style={styles.autoApplyAllText}>Auto Apply</Text>
+        </TouchableOpacity>
+      </View>
+
+      {isMatching && (
+        <View style={styles.aiLoader}>
+          <ActivityIndicator color="#00C65A" />
+          <Text style={styles.aiLoaderText}>Analyzing your skills and preferences...</Text>
+        </View>
+      )}
+
+      {(matchedJobs.length ? matchedJobs : []).map((job: any) => {
+        const isApplied = job.applied;
         const isSaved = savedJobs.includes(job.id);
         return (
           <View key={job.id} style={styles.jobCard}>
@@ -451,7 +485,7 @@ export default function YouthDashboard() {
               <View style={styles.jobTitleContainer}>
                 <Text style={styles.jobTitle}>{job.title}</Text>
                 <View style={styles.matchScoreBadge}>
-                  <Text style={styles.matchScoreText}>{job.matchScore}%</Text>
+                  <Text style={styles.matchScoreText}>{job.matchScore || 85}%</Text>
                 </View>
               </View>
               <Text style={styles.jobType}>{job.type}</Text>
@@ -462,12 +496,12 @@ export default function YouthDashboard() {
 
             <View style={styles.jobActions}>
               <TouchableOpacity
-                style={[styles.applyButton, isApplied && styles.appliedButton]}
-                onPress={() => !isApplied && handleApplyToJob(job.id)}
+                style={[styles.applyButton, (isApplied || applyingId === job.id) && styles.appliedButton]}
+                onPress={() => !isApplied && handleApplyOne(job.id)}
                 disabled={isApplied}
               >
-                <Text style={[styles.applyButtonText, isApplied && styles.appliedButtonText]}>
-                  {isApplied ? "Applied" : "Apply Now"}
+                <Text style={[styles.applyButtonText, (isApplied || applyingId === job.id) && styles.appliedButtonText]}>
+                  {isApplied ? "Applied" : applyingId === job.id ? "Applying..." : "Apply Now"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={() => handleSaveJob(job.id)}>
@@ -478,45 +512,14 @@ export default function YouthDashboard() {
           </View>
         );
       })}
+
+      
     </View>
   );
 
-  const renderDomainTab = () => (
-    <View style={styles.tabContent}>
-      <Text style={styles.tabTitle}>My .KE Domain</Text>
-      <Text style={styles.tabSubtitle}>Your digital identity and portfolio</Text>
-      <View style={styles.domainInfoCard}>
-        <Text style={styles.domainUrl}>{user?.domain || "yourname.ke"}</Text>
-        <Text style={styles.domainDescription}>Your verified .KE domain serves as your digital identity.</Text>
-      </View>
-    </View>
-  );
+  // removed domain/applications/alerts/settings tabs in new 4-tab layout
 
-  const renderApplicationsTab = () => (
-    <View style={styles.tabContent}>
-      <Text style={styles.tabTitle}>My Applications</Text>
-      <Text style={styles.tabSubtitle}>Track your job application progress</Text>
-      {applications.length === 0 ? (
-        <View style={styles.emptyState}>
-          <FileText color="rgba(255,255,255,0.5)" size={48} />
-          <Text style={styles.emptyStateText}>No applications yet</Text>
-        </View>
-      ) : (
-        applications.map((app: any) => (
-          <View key={app.id} style={styles.applicationCard}>
-            <View style={styles.applicationHeader}>
-              <Text style={styles.applicationTitle}>{app.jobTitle}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(app.status) }]}>
-                <Text style={styles.statusText}>{app.status.toUpperCase()}</Text>
-              </View>
-            </View>
-            <Text style={styles.applicationCompany}>{app.company}</Text>
-            <Text style={styles.applicationDate}>Applied: {new Date(app.appliedAt).toLocaleDateString()}</Text>
-          </View>
-        ))
-      )}
-    </View>
-  );
+  
 
   const renderNotificationsTab = () => (
     <View style={styles.tabContent}>
@@ -545,25 +548,19 @@ export default function YouthDashboard() {
 
   const renderProfileTab = () => (
     <View style={styles.tabContent}>
-      <Text style={styles.tabTitle}>Profile & Portfolio</Text>
-      <Text style={styles.tabSubtitle}>Manage your professional identity</Text>
-      <View style={styles.profileSection}>
-        <Text style={styles.sectionTitle}>Personal Information</Text>
-        <View style={styles.profileCard}>
-          <View style={styles.profileRow}>
-            <Text style={styles.profileLabel}>Full Name:</Text>
-            <Text style={styles.profileValue}>{profile?.fullName || "Not set"}</Text>
-          </View>
-          <View style={styles.profileRow}>
-            <Text style={styles.profileLabel}>Email:</Text>
-            <Text style={styles.profileValue}>{profile?.email || "Not set"}</Text>
-          </View>
-        </View>
+      <Text style={styles.tabTitle}>Profile</Text>
+      <Text style={styles.tabSubtitle}>Your personal credentials (PII)</Text>
+      <View style={styles.profileCard}>
+        <View style={styles.profileRow}><Text style={styles.profileLabel}>Full Name</Text><Text style={styles.profileValue}>{profile?.fullName || user?.profile?.fullName || '-'}</Text></View>
+        <View style={styles.profileRow}><Text style={styles.profileLabel}>Email</Text><Text style={styles.profileValue}>{profile?.email || user?.email || '-'}</Text></View>
+        <View style={styles.profileRow}><Text style={styles.profileLabel}>Phone</Text><Text style={styles.profileValue}>{profile?.phone || user?.profile?.phone || '-'}</Text></View>
+        <View style={styles.profileRow}><Text style={styles.profileLabel}>National ID</Text><Text style={styles.profileValue}>{profile?.nationalId || user?.profile?.nationalId || '-'}</Text></View>
+        <View style={styles.profileRow}><Text style={styles.profileLabel}>Date of Birth</Text><Text style={styles.profileValue}>{profile?.dateOfBirth || user?.profile?.dateOfBirth || '-'}</Text></View>
       </View>
     </View>
   );
 
-  const renderCVServicesTab = () => (
+  const renderCVTab = () => (
     <View style={styles.tabContent}>
       <Text style={styles.tabTitle}>CV & Document Services</Text>
       <Text style={styles.tabSubtitle}>Professional CV tools and templates</Text>
@@ -580,24 +577,16 @@ export default function YouthDashboard() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "home":
-        return renderHomeTab();
+      case "portfolio":
+        return renderPortfolioTab();
       case "profile":
         return renderProfileTab();
       case "jobs":
         return renderJobsTab();
-      case "domain":
-        return renderDomainTab();
-      case "applications":
-        return renderApplicationsTab();
-      case "cv-services":
-        return renderCVServicesTab();
-      case "notifications":
-        return renderNotificationsTab();
-      case "settings":
-        return renderSettingsTab();
+      case "cv":
+        return renderCVTab();
       default:
-        return renderHomeTab();
+        return renderPortfolioTab();
     }
   };
 
@@ -701,7 +690,7 @@ export default function YouthDashboard() {
 
             {isMenuOpen && (
               <View style={styles.profileMenu}>
-                <TouchableOpacity style={styles.profileMenuItem} onPress={() => setActiveTab("settings")}>
+                <TouchableOpacity style={styles.profileMenuItem} onPress={() => setActiveTab("profile")}>
                   <Text style={styles.profileMenuText}>Profile & Settings</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.profileMenuItem} onPress={handleSignOut}>
@@ -731,6 +720,64 @@ export default function YouthDashboard() {
       </LinearGradient>
 
       {renderTranslationChat()}
+
+      {/* Portfolio dummy data modals */}
+      <Modal visible={showProjects} transparent animationType="fade" onRequestClose={() => setShowProjects(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCardLight}>
+            <Text style={styles.modalTitleLight}>Personal Projects</Text>
+            <Text style={styles.modalText}>• E-Commerce App (React Native)
+• School Portal (Next.js)
+• Chatbot Assistant (Python)</Text>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowProjects(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showCerts} transparent animationType="fade" onRequestClose={() => setShowCerts(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCardLight}>
+            <Text style={styles.modalTitleLight}>Certificates & Accreditations</Text>
+            <Text style={styles.modalText}>• Google IT Support Fundamentals
+• AWS Cloud Practitioner
+• KENET Verified Student ID</Text>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowCerts(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showHustles} transparent animationType="fade" onRequestClose={() => setShowHustles(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCardLight}>
+            <Text style={styles.modalTitleLight}>Side Hustles</Text>
+            <Text style={styles.modalText}>• Freelance Graphic Design (Canva)
+• Phone Repair & Maintenance
+• Social Media Content Editing</Text>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowHustles(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showCVSummary} transparent animationType="fade" onRequestClose={() => setShowCVSummary(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCardLight}>
+            <Text style={styles.modalTitleLight}>CV Summary</Text>
+            <Text style={styles.modalText}>• Name: {profile?.fullName || user?.profile?.fullName || 'User'}
+• Email: {profile?.email || user?.email || 'user@example.com'}
+• Skills: React Native, JavaScript, UI/UX, Git
+• Experience: 1-2 years internship/freelance</Text>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowCVSummary(false)}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -814,6 +861,16 @@ const styles = StyleSheet.create({
   serviceDescription: { fontSize: 14, color: "rgba(255,255,255,0.8)", marginBottom: 12, lineHeight: 20 },
   serviceButton: { backgroundColor: "#00C65A", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, alignSelf: "flex-start" },
   serviceButtonText: { color: "#FFFFFF", fontWeight: "600", fontSize: 14 },
+  // portfolio sections
+  sectionCard: { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 16, padding: 16, marginBottom: 16 },
+  sectionHint: { color: "rgba(255,255,255,0.8)", marginTop: 6 },
+  // AI jobs
+  aiMatchButton: { backgroundColor: "#00C65A", paddingVertical: 12, borderRadius: 8, alignItems: "center", marginBottom: 12 },
+  aiMatchText: { color: "#FFFFFF", fontWeight: "700" },
+  aiLoader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  aiLoaderText: { color: "rgba(255,255,255,0.85)" },
+  autoApplyAllBtn: { backgroundColor: "rgba(0,198,90,0.2)", paddingVertical: 10, borderRadius: 8, alignItems: "center", marginTop: 8 },
+  autoApplyAllText: { color: "#00C65A", fontWeight: "700" },
   // translation chat styles
   translationChatContainer: { flex: 1 },
   translationChatGradient: { flex: 1 },
@@ -861,4 +918,11 @@ const styles = StyleSheet.create({
   saveButton: { backgroundColor: "rgba(255,255,255,0.1)", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginLeft: 8 },
   saveButtonText: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "500" },
   savedButtonText: { color: "#00C65A" },
+  // generic light modal styles
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
+  modalCardLight: { backgroundColor: "#fff", width: '85%', borderRadius: 12, padding: 16 },
+  modalTitleLight: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
+  modalText: { color: '#333', lineHeight: 20, marginBottom: 12 },
+  modalCloseBtn: { alignSelf: 'flex-end', backgroundColor: '#CE1126', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12 },
+  modalCloseText: { color: '#fff', fontWeight: '700' },
 });

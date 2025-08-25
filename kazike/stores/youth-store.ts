@@ -71,7 +71,7 @@ const SAVED_JOBS_STORAGE_KEY = "@youth_saved_jobs";
 
 // Mock profile data
 const mockProfile: YouthProfile = {
-  fullName: "John Doe",
+  fullName: "",
   email: "john.doe@example.com",
   phone: "+254712345678",
   nationalId: "12345678",
@@ -180,7 +180,16 @@ export const useYouthStore = create<YouthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const stored = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
-      const profile = stored ? JSON.parse(stored) : mockProfile;
+      let profile = stored ? JSON.parse(stored) : mockProfile;
+      // If name missing, derive from auth user
+      try {
+        const authRaw = await AsyncStorage.getItem("@ke_identity_user");
+        const auth = authRaw ? JSON.parse(authRaw) : null;
+        if (auth && (!profile.fullName || profile.fullName.trim() === "")) {
+          const derived = auth.profile?.fullName || (auth.email ? auth.email.split('@')[0] : "");
+          profile = { ...profile, fullName: derived } as YouthProfile;
+        }
+      } catch {}
       set({ profile });
       
       // Auto-load job matches when profile is loaded

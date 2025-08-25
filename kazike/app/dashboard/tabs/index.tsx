@@ -1,11 +1,12 @@
 
 
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import Colors from '../constants/colors';
 import QuickStats from '../components/QuickStats';
 import DomainCard from '../components/DomainCard';
+import DomainManager from '../components/DomainManager';
 import ActivityItem from '../components/ActivityItem';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -28,6 +29,7 @@ export default function HomeTab() {
   const { user } = useAuthStore();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDomainEditor, setShowDomainEditor] = useState(false);
 
   // load jobs from storage
   useEffect(() => {
@@ -76,7 +78,25 @@ export default function HomeTab() {
 
         <QuickStats stats={stats} />
 
+        {/* Existing summary card */}
         <DomainCard domain={domain} />
+
+        {/* Edit Portfolio toggle */}
+        <View style={styles.actionRow}>
+          <Text style={styles.sectionTitle}>Portfolio</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Text />
+          </View>
+        </View>
+        <TouchableOpacity style={styles.editPortfolioBtn} onPress={() => setShowDomainEditor(v => !v)}>
+          <Text style={styles.editPortfolioText}>{showDomainEditor ? 'Close Editor' : 'Edit Portfolio'}</Text>
+        </TouchableOpacity>
+
+        {showDomainEditor && (
+          <View style={{ marginTop: 12 }}>
+            <DomainManager />
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -110,4 +130,7 @@ const styles = StyleSheet.create({
     color: Colors.black,
     marginBottom: 12,
   },
+  actionRow: { marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  editPortfolioBtn: { alignSelf: 'flex-start', backgroundColor: Colors.red, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, marginTop: 8 },
+  editPortfolioText: { color: '#fff', fontWeight: '700' },
 });

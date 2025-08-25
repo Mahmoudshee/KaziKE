@@ -295,7 +295,7 @@ export default function GovernmentDashboard() {
     { id: 'certificates' as TabType, title: 'Certificates', icon: GraduationCap },
     { id: 'employment' as TabType, title: 'Employment', icon: Building },
     { id: 'analytics' as TabType, title: 'Analytics', icon: BarChart3 },
-    { id: 'domain' as TabType, title: 'Domain', icon: Globe },
+    { id: 'profile' as TabType, title: 'Profile', icon: Globe },
     { id: 'notifications' as TabType, title: 'Alerts', icon: Bell },
     { id: 'settings' as TabType, title: 'Settings', icon: Settings },
   ];
@@ -357,8 +357,8 @@ export default function GovernmentDashboard() {
         return renderEmploymentTab();
       case 'analytics':
         return renderAnalyticsTab();
-      case 'domain':
-        return renderDomainTab();
+      case 'profile':
+        return renderProfileTab();
       case 'notifications':
         return renderNotificationsTab();
       case 'settings':
@@ -747,10 +747,10 @@ export default function GovernmentDashboard() {
     </View>
   );
 
-  const renderDomainTab = () => (
+  const renderProfileTab = () => (
     <View style={styles.tabContent}>
-      <Text style={styles.tabTitle}>Government Domain</Text>
-      <Text style={styles.tabSubtitle}>Your official KaziKE.ke domain for government services</Text>
+      <Text style={styles.tabTitle}>Profile</Text>
+      <Text style={styles.tabSubtitle}>Ministry details and official domain</Text>
       
       <View style={styles.domainInfoCard}>
         <View style={styles.domainInputContainer}>

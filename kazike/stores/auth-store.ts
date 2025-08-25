@@ -98,16 +98,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
  
   logout: async () => {
     console.log("Logging out user");
+    // Best-effort Supabase sign out, but don't block local cleanup
     try {
-      await supabase.auth.signOut();        
-      await AsyncStorage.removeItem(STORAGE_KEY);
-
-      set({ user: null, selectedRole: null });
-      
-      router.replace("/");             
-
+      await supabase.auth.signOut();
     } catch (error) {
-      console.error("Failed to logout:", error);
+      console.warn("Supabase signOut failed (continuing):", error);
+    }
+
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn("Failed removing stored user (continuing):", error);
+    }
+
+    // Clear in-memory state and navigate to the root once
+    set({ user: null, selectedRole: null });
+    try {
+      // Ensure we escape any nested stacks/tabs before redirecting
+      try { (router as any).dismissAll?.(); } catch {}
+      router.replace("/");
+    } catch (error) {
+      console.warn("Router replace failed (non-fatal):", error);
     }
   },
   
